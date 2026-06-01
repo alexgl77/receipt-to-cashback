@@ -221,9 +221,100 @@ La primera versión del módulo usaba `prompt.format(ocr_text=...)`, lo que romp
 
 ---
 
-## Día 5 — _(pendiente)_
+## Día 5 — 2026-06-05 — FAISS matcher + CashbackEngine (¡SPINE COMPLETO!)
 
-_Por escribirse después del FAISS matcher y el CashbackEngine._
+### Qué hicimos
+Construimos las dos últimas piezas del pipeline antes de la interfaz: el **matcher semántico** (que mapea "Iced Tea" del recibo a "BEV003 / Iced Tea" del catálogo, aunque estén escritos distinto), y el **motor de cashback** (que calcula cuánto dinero recibe el usuario aplicando reglas de negocio). Con esto, la app **ya hace todo el trabajo de extremo a extremo**: foto → cashback. Solo falta envolverlo en una UI.
+
+### Para qué sirve en la app
+**Matcher (FAISS):** el LLM nos da items como "MilkShake 3tarwb" (con error de OCR), "Nasi Putih" (en indonesio), "Carbonara Pasta" (mezcla de idiomas). El catálogo tiene "Milkshake", "White Rice", "Carbonara". Hacer un match con `==` no funciona. Lo que hace FAISS es convertir cada nombre en un vector (384 números) que representa su significado, y luego comparar vectores en lugar de strings. Así "Nasi Putih" se acerca a "White Rice" porque significan lo mismo.
+
+**CashbackEngine:** una vez que sabemos qué producto del catálogo es cada línea, aplicamos la tasa de cashback que ese producto tiene (3% para bebidas, 5% para comida, 0% para bolsas plásticas) y sumamos.
+
+Analogía: el matcher es como un mesero que recibe el ticket impreso, mira el menú interno del restaurante, y dice "ah, esto que dice 'Marg.Pizza' es nuestra Margherita Pizza". El CashbackEngine es la caja registradora que aplica los descuentos correspondientes.
+
+### De qué semana del bootcamp viene
+- **Week 8 Day 2** (Vector Databases and RAG Chatbots): la idea de embeddear textos y buscar por similitud. Usamos exactamente la misma técnica que un sistema RAG usa para encontrar contexto relevante, pero aquí la usamos para matchear items.
+- **Week 1-2** (Python OOP): `CashbackEngine` y `CashbackStrategy` son clases con interface clara. El patrón "Strategy" (cambiar el comportamiento de un objeto pasándole una estrategia distinta) nos prepara para el A/B testing del día 7 sin tener que tocar el motor.
+
+### Cómo funciona el matcher por dentro
+1. Al construirlo, lee `data/catalog.csv` (110 productos)
+2. Embeddea el `name` de cada uno con `sentence-transformers/all-MiniLM-L6-v2` (un modelo pre-entrenado de Hugging Face, ~22 MB)
+3. Guarda los embeddings en un índice FAISS
+4. Cuando le preguntás `idx.match("Iced Tea")`, embeddea la query y busca el más cercano en el índice
+
+Probamos el matcher con strings reales (incluyendo basura):
+- `'ICED TEA'` → `Iced Tea` (score 0.95+)
+- `'Nasi Putih'` → `White Rice` (semantic match en otro idioma)
+- `'TWIST DONUT'` → `Donut`
+- `'OP CODE 12345'` (basura) → score muy bajo, **rechazado por el threshold de 0.35**
+
+El threshold de 0.35 evita que items basura (códigos de operador, números sueltos) reciban cashback fantasma.
+
+### El strategy pattern del CashbackEngine
+El brief pide A/B testing (día 7). En lugar de hardcodear las reglas y tener que reescribirlas, hicimos esto:
+
+```python
+class CashbackStrategy(Protocol):
+    def rate_for(self, m: MatchedLineItem) -> float: ...
+
+class PerSkuStrategy:
+    # usa la tasa del catálogo (3% bebidas, 5% comida, etc.)
+    def rate_for(self, m): return m.match.cashback_rate if m.accepted else 0.0
+
+class FlatStrategy:
+    # tasa fija para todo lo que matchea
+    def __init__(self, flat_rate=0.03): self.flat_rate = flat_rate
+    def rate_for(self, m): return self.flat_rate if m.accepted else 0.0
+
+engine_A = CashbackEngine(PerSkuStrategy())
+engine_B = CashbackEngine(FlatStrategy(0.04))
+```
+
+El día 7 vamos a tomar las 100 boletas del validation split, calcular el cashback con cada estrategia, y comparar los resultados con un test estadístico. **Cero cambios al motor** — solo cambiamos la estrategia que le pasamos.
+
+### Tests
+Por primera vez en el proyecto tenemos tests unitarios. `tests/test_cashback_engine.py` con **5 casos que todos pasan**:
+- Cálculo correcto sumando por línea
+- Líneas rechazadas (score bajo) no aportan cashback
+- Líneas sin precio se tratan como 0
+- FlatStrategy aplica tasa fija
+- Effective rate computa bien la tasa efectiva
+
+Esto cumple el requisito del brief de tener tests. Y más importante: si mañana alguien rompe el motor sin querer (porque está moviendo otra cosa), los tests fallan inmediatamente y se entera.
+
+### Spine completo, end-to-end, verificado
+Corrimos el pipeline COMPLETO sobre una boleta real de CORD-v2:
+- **20 items extraídos**
+- **Spend total: 1,280,066 IDR** (rupias indonesias del receipt)
+- **Cashback total: 44,322 IDR**
+- **Effective rate: 3.5%**
+- **FAISS matching: <1 segundo** (rapidísimo)
+- **Pipeline total: ~135s** en CPU (OCR 30s + LLM 105s + FAISS 1s)
+
+La latencia sigue alta por OCR + LLM (no por FAISS). Para el demo se aguanta con un spinner; para producción habría que cachear/batchear.
+
+### Trozo clave
+El spine completo en 5 líneas:
+
+```python
+text       = ocr.read_text(image)              # día 3
+extraction = ext.extract(text)                 # día 4
+matched    = match_extraction(extraction, idx) # día 5 (FAISS)
+result     = engine.compute(matched)           # día 5 (CashbackEngine)
+# result.total_cashback → el número que va a la pantalla
+```
+
+Cada paso tiene un tipo bien definido (str → ReceiptExtraction → list[MatchedLineItem] → CashbackResult), así que el día 6 cuando armemos Streamlit, no vamos a estar peleando con strings.
+
+### Branch usada
+`feat/faiss-cashback` → merged a `main` cuando todo funcionó end-to-end y los tests pasaron.
+
+---
+
+## Día 6 — _(pendiente)_
+
+_Por escribirse después de la app Streamlit MVP._
 
 ---
 
