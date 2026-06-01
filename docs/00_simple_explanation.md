@@ -366,6 +366,42 @@ Esto es **toda** la lógica de negocio de la app. El resto es Streamlit pidiénd
 
 ---
 
+## Día 6.5 — Pivote de modelo de negocio + tres optimizaciones técnicas
+
+Esta entrada **NO es un día nuevo del roadmap**. Es un cambio que hicimos en mitad del día 6 después de probar la app en el navegador y darnos cuenta de dos cosas: (a) el modelo de negocio original tenía un problema conceptual; (b) la latencia era prohibitiva.
+
+### El pivote conceptual
+**Antes:** La app pretendía ser tipo Rappi — solo dábamos cashback por items con los que tuviéramos "acuerdo comercial" (productos del catálogo). Items que no estaban en el catálogo o que no se podían matchear → cashback cero.
+
+**Ahora:** Somos una **empresa de investigación de mercado**. El usuario nos da el dato (la boleta itemizada), nosotros le pagamos un cashback flat (2% por defecto) a cambio. Después agregamos esos datos y los vendemos a marcas/retailers/consultoras. El valor para nosotros está en el **dato itemizado anónimo**, no en una comisión por acuerdo de marca.
+
+**Por qué este modelo es mejor para este proyecto:**
+1. **Más realista para una "startup capstone":** no hace falta firmar acuerdos con 100 marcas para que la app funcione
+2. **Más simple técnicamente:** el motor de cashback baja a una sola regla ("paga sobre todo lo que tenga precio")
+3. **Mucho más rica en ética:** vender datos de consumo despierta todas las preguntas serias (consentimiento, privacidad, anonimización, derechos del usuario)
+4. **El catálogo se mantiene útil**, pero cambia de propósito: en lugar de gatekeep el cashback, **clasifica el gasto** (food/beverage/bakery/...) para enriquecer el dato vendible
+
+### Tres cambios técnicos que vinieron junto
+1. **Embedding multilingüe.** Cambiamos `all-MiniLM-L6-v2` (inglés-only) por `paraphrase-multilingual-MiniLM-L12-v2` (soporta 50+ idiomas). Razón: nuestro test "PKT AYAM" (paquete de pollo en indonesio) fallaba el matching porque el embedding inglés no entiende indonesio. El multilingüe ahora lo clasifica como food correctamente.
+2. **Gemini 2.5 Flash Lite.** Cambiamos `gemini-2.5-flash` por su variante `lite`. ~3x más rápido con calidad equivalente para nuestra tarea de extracción estructurada.
+3. **Cache por hash de imagen.** Si el demo sube la misma boleta dos veces, la segunda es instantánea. Crítico para el día 11 (presentación) — habla mientras carga la primera, repite gratis la segunda.
+
+### Resultado medido sobre el caso "PKT AYAM"
+| Métrica | Antes | Ahora |
+|---|---|---|
+| Tiempo end-to-end | 40+ segundos | **8.1 segundos** |
+| Clasificación del item | rechazado (Wine, score bajo) | **food** (multilingüe lo entiende) |
+| Cashback al usuario | 0 IDR | **660 IDR** (2% flat) |
+| % de gasto clasificado | 0% | **100%** |
+
+### Para el PPT (slide de challenges)
+*"Mid-build we changed the business model from partner-rebate to market-research data acquisition. This simplified the cashback logic (every priced line pays out flat), made the ethics section the strongest part of the project (we are selling consumption data — privacy, consent, anonymisation matter), and exposed a real technical issue: the English-only embedding rejected Indonesian items. We switched to a multilingual model and brought end-to-end latency down 5x by moving to Gemini Flash Lite. The catalog kept its role — but as a classifier, not a gatekeeper."*
+
+### Tests
+Los 5 tests viejos se reemplazaron por 7 tests nuevos que codifican la **semántica del nuevo modelo de negocio**: "uncategorised lines still earn cashback at the strategy's base rate", "categorised_share refleja qué % del gasto pudimos clasificar". Todos pasan. Esto es importante porque un futuro yo que toque el motor podría "arreglar" el comportamiento "raro" de pagar por items no categorizados — los tests le explican que es feature, no bug.
+
+---
+
 ## Día 7 — _(pendiente)_
 
 _Por escribirse después del clustering, A/B test y B2B view._

@@ -101,7 +101,10 @@ OCR:
 
 @dataclass
 class ExtractorConfig:
-    model: str = "gemini-2.5-flash"
+    # `gemini-2.5-flash-lite`: ~3x faster than `flash` with comparable
+    # quality for structured extraction from short OCR text. Switched
+    # after day-6 showed end-to-end latency was dominated by the LLM.
+    model: str = "gemini-2.5-flash-lite"
     temperature: float = 0.0
     max_retries: int = 1
 

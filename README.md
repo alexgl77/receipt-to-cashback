@@ -1,6 +1,6 @@
 # Receipt-to-Cashback — Final Project (Developers Institute Capstone)
 
-> Upload a photo of a receipt → the app validates it, extracts items with OCR + an LLM, matches them against a product catalog with a vector database, and computes a cashback reward.
+> A market-research data acquisition app. Users scan a receipt → we pay them flat cashback in exchange for the itemised consumption data, which is anonymised, classified and (in the business model) sold in aggregate to brands and retailers.
 
 **Author:** Alex Goldbaum · **Bootcamp:** GenAI & Machine Learning 2026, Developers Institute
 **Demo Day:** 2026-06-11
@@ -15,7 +15,7 @@ Work in progress. This README is a skeleton — final version will be completed 
 
 ## What this project does (in one paragraph)
 
-A user takes a picture of a paper receipt and uploads it to a Streamlit app. A convolutional neural network (CNN) trained on top of MobileNetV2 first checks the image is a real receipt and classifies the type of store (supermarket, pharmacy, restaurant, gas station, other). An OCR model (TrOCR or Donut) extracts the raw text from the receipt. Gemini 2.0 Flash, prompted with few-shot examples, turns that text into a clean JSON of items, prices, date and total. Each item is then matched against a generic international product catalog (~100 SKUs) using FAISS vector search. A simple OOP `CashbackEngine` applies business rules per category and returns the cashback amount to the user. A separate "B2B view" page shows aggregated analytics on top of simulated receipt history — k-means clustering of users, and an A/B-test simulation of two cashback strategies. Dataset for training, evaluation and demo: SROIE 2019 (public, ~1000 annotated receipts).
+A user takes a picture of a paper receipt and uploads it to a Streamlit app. An OCR model (EasyOCR) extracts the raw text. Gemini 2.5 Flash Lite, prompted with few-shot examples and constrained by a strict Pydantic schema, turns that text into a clean list of items, prices, currency and total. Each item is then embedded with a multilingual sentence-transformer and matched against a 110-SKU F&B catalog using FAISS — the catalog **classifies** the spend (food / beverage / bakery / …) so that the data we hold is enriched, but every priced line earns cashback regardless of whether it classifies. A small OOP `CashbackEngine` applies a flat or tiered strategy and returns the amount to the user. A separate "B2B view" page shows aggregated analytics on top of simulated receipt history — K-Means clustering of users by spend pattern, and an A/B-test simulation of two cashback rates. Dataset for training, evaluation and demo: CORD-v2 (public, 1000 annotated receipts, Naver Clova 2019). A short ethics section discusses informed consent, anonymisation, and the risk profile of monetising aggregated consumption data.
 
 ---
 
@@ -30,10 +30,10 @@ A user takes a picture of a paper receipt and uploads it to a Streamlit app. A c
 
 | Layer | Tool | Where it comes from in the bootcamp |
 |---|---|---|
-| Image classification (CNN) | PyTorch + torchvision MobileNetV2 (transfer learning) | Week 6 — Deep Learning |
-| OCR | TrOCR / Donut (pre-trained) | Week 7 — LLM & Gen AI |
-| Structured extraction (LLM) | Gemini 2.0 Flash + few-shot prompts | Week 9 — Prompt Engineering |
-| Vector search | FAISS + sentence-transformers | Week 8 — NLP & RAG |
+| Image classification (CNN) | PyTorch + torchvision MobileNetV2 (transfer learning, optional quality gate) | Week 6 — Deep Learning |
+| OCR | EasyOCR (CRAFT detector + CRNN recognizer) | Week 7 — LLM & Gen AI |
+| Structured extraction (LLM) | Gemini 2.5 Flash Lite + few-shot + Pydantic strict schema | Week 9 — Prompt Engineering |
+| Vector search | FAISS + multilingual sentence-transformers (`paraphrase-multilingual-MiniLM-L12-v2`) | Week 8 — NLP & RAG |
 | Classical ML | scikit-learn (LogisticRegression, KMeans) | Week 5 — ML |
 | Stats (A/B test) | scipy.stats | Week 5 — Stats for ML |
 | Data wrangling & viz | pandas, matplotlib, seaborn | Week 3-4 — Data Analysis |
