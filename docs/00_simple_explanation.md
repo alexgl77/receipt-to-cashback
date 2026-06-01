@@ -36,6 +36,19 @@ Cada librería tiene un nombre de semana al lado: así, cuando alguien me pregun
 
 ---
 
+### Qué más pasó el día 1
+- Se creó el **repositorio público en GitHub**: https://github.com/alexgl77/receipt-to-cashback
+- Se hizo el **primer commit** con la estructura base
+- Se redactaron las **cards de Trello** listas para pegar (en [docs/06_trello_cards.md](06_trello_cards.md))
+- Se separó este proyecto del repo del bootcamp (la carpeta `final project/` ahora es repo aparte)
+
+### Lo que queda como acción humana del día 1
+- Pegar el contenido de [docs/01_proposal.md](01_proposal.md) en el Final Project Proposal Form y enviárselo a Yossi
+- Crear el Trello board copiando las cards de [docs/06_trello_cards.md](06_trello_cards.md) y mandar el link a Yossi
+- (Cuando llegue el día 4) Generar la API key de Gemini en https://aistudio.google.com/app/apikey
+
+---
+
 ## Día 2 — _(pendiente)_
 
 _Por escribirse después de hacer el EDA del dataset SROIE._
