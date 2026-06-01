@@ -144,9 +144,86 @@ Esto cumple con el requisito de **OOP del brief** (Week 1-2): clase con `__init_
 
 ---
 
-## Día 4 — _(pendiente)_
+## Día 4 — 2026-06-04 — LLM extractor (con Gemini)
 
-_Por escribirse después del LLM extractor con Gemini._
+### Qué hicimos
+Conectamos la app con Gemini 2.5 Flash (un LLM de Google) y le enseñamos, con dos ejemplos, a leer el texto crudo que sale del OCR y devolver una **lista limpia y estructurada de productos, precios y total**. Y además le pusimos un "candado": si por alguna razón el LLM devuelve algo raro, el sistema lo detecta y lo rechaza antes de que llegue a la siguiente etapa.
+
+### Para qué sirve en la app
+Es el "ordenador" del pipeline. El OCR del día 3 nos da texto desordenado tipo:
+```
+Nasi Campur Bali
+75,000
+Ice Lemon Tea
+24,000
+TOTAL
+99,000
+```
+Y el LLM nos devuelve algo limpio que el código puede usar directo:
+```python
+items = [
+  {name: "Nasi Campur Bali", quantity: 1, line_total: 75000},
+  {name: "Ice Lemon Tea",   quantity: 1, line_total: 24000},
+]
+total = 99000
+currency = "IDR"
+```
+
+Volviendo a la analogía del restaurante: si el OCR es la persona que lee la boleta en voz alta, el LLM es el que toma nota organizada en una libreta. Sin esta etapa, el resto de la app no sabría qué hacer con la lista de palabras sueltas.
+
+### De qué semana del bootcamp viene
+**Week 7 (LLM and Gen AI)** y **Week 9 (Prompt Engineering)**. Concretamente:
+- **Uso de un modelo pre-entrenado** (Gemini 2.5 Flash) sin entrenarlo nosotros — Week 7
+- **Few-shot prompting**: en el prompt incluímos 2 ejemplos completos (boleta + JSON esperado) para que el modelo aprenda el formato a la primera — Week 9
+- **Structured output con schema strict**: en lugar de pedirle "devuelve JSON por favor" y rezar, le pasamos un schema Pydantic y el SDK de Gemini se encarga de forzarlo — patrón moderno de Gen AI
+
+### El "candado" anti-error
+Yossi específicamente nos alertó: *"el LLM va a devolver JSON malformado de vez en cuando o va a alucinar un total — manejá ese caso o la demo se rompe en vivo"*.
+
+Lo que hicimos:
+1. **Schema obligatorio** en la llamada a Gemini → el SDK rechaza output que no sea JSON válido antes de que llegue a nuestro código
+2. **Validación con Pydantic** después → si el JSON no respeta los tipos esperados, lo capturamos
+3. **Un reintento** con el mensaje de error pegado al prompt → "tu intento anterior falló porque X, corregilo"
+4. **Excepción tipada** (`LLMExtractionError`) si después de 2 intentos sigue sin funcionar → la app muestra un error amigable al usuario, no se cae
+
+Tres capas de defensa. La demo no se va a romper porque el LLM tuvo un mal día.
+
+### Cómo nos fue (medido en vivo sobre 5 receipts reales)
+- **80% de los productos del ground-truth se extrajeron correctamente** (recall por nombre)
+- **Total exacto coincide en 2/5 boletas** — esto NO es crítico porque el cashback lo calculamos sobre los precios de cada línea (line_total), no sobre el total agregado
+- **Latencia end-to-end (OCR + LLM): ~40 segundos por boleta** en CPU. Lento para producción, aceptable para demo con spinner
+
+### Trozo clave
+El schema Pydantic que define el contrato entre el LLM y el resto del código:
+
+```python
+class LineItem(BaseModel):
+    name: str                          # "Nasi Campur Bali"
+    quantity: int = 1
+    unit_price: float | None = None    # 75000.0
+    line_total: float | None = None    # 75000.0
+
+class ReceiptExtraction(BaseModel):
+    items: list[LineItem]
+    total: float | None = None         # 99000.0
+    currency: str | None = None        # "IDR"
+    merchant: str | None = None
+    date: str | None = None
+```
+
+Cuando el resto de la app (FAISS, CashbackEngine, Streamlit) recibe un `ReceiptExtraction`, ya sabe exactamente qué campos hay y de qué tipo son. No hay parsing de strings ni "espero que el campo total exista".
+
+### Bug que encontramos y arreglamos
+La primera versión del módulo usaba `prompt.format(ocr_text=...)`, lo que rompía porque el prompt tiene llaves `{}` literales en los ejemplos JSON. Cambiamos a `prompt.replace("{ocr_text}", ...)`. Está documentado en el código con un comentario corto explicando por qué — esto evita que alguien vuelva a "arreglarlo" en el futuro.
+
+### Branch usada
+`feat/llm-extractor` → merged a `main` cuando funcionó end-to-end.
+
+---
+
+## Día 5 — _(pendiente)_
+
+_Por escribirse después del FAISS matcher y el CashbackEngine._
 
 ---
 
