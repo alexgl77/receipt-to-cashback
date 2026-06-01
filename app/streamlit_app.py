@@ -27,6 +27,10 @@ load_dotenv(ROOT / ".env")
 
 import streamlit as st
 
+import numpy as np
+import pandas as pd
+
+from src.analytics import CATEGORY_COLS, ab_test, cluster_users
 from src.cashback_engine import (
     CashbackEngine,
     CashbackResult,
@@ -36,6 +40,7 @@ from src.cashback_engine import (
 from src.llm_extractor import LLMExtractionError, LLMExtractor, ReceiptExtraction
 from src.matcher import MatchedLineItem, match_extraction
 from src.ocr_pipeline import OCRPipeline
+from src.synthetic_users import ARCHETYPES, generate_users
 from src.vector_store import CatalogIndex
 
 
@@ -230,6 +235,107 @@ def page_upload() -> None:
             st.json(extraction.model_dump())
 
 
+@st.cache_data(show_spinner=False)
+def get_simulated_users(n_users: int) -> pd.DataFrame:
+    return generate_users(n_users=n_users)
+
+
+def page_b2b() -> None:
+    st.title("B2B Analytics")
+    st.caption(
+        "What our customers (brands, retailers, market-research firms) "
+        "see when they buy our data. Built on a synthetic user population "
+        "so the demo is reproducible — the same code works on a real "
+        "user table."
+    )
+
+    with st.sidebar:
+        st.subheader("Simulation parameters")
+        n_users = st.slider(
+            "Synthetic user population", 100, 1000, 400, step=100
+        )
+
+    users = get_simulated_users(n_users)
+
+    # Headline numbers ------------------------------------------------------
+    total_spend = users["total_spend"].sum()
+    total_receipts = users["receipts_per_month"].sum()
+    avg_basket = total_spend / total_receipts if total_receipts else 0
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Users", f"{len(users):,}")
+    c2.metric("Monthly spend (USD)", f"{total_spend:,.0f}")
+    c3.metric("Receipts / month", f"{total_receipts:,}")
+    c4.metric("Avg basket", f"{avg_basket:,.2f}")
+
+    # A/B test --------------------------------------------------------------
+    st.markdown("### A/B test — does a higher cashback rate buy more data?")
+    st.caption(
+        "Cohort A is paid 2% cashback, cohort B is paid 3%. Engagement is "
+        "measured as receipts uploaded per user per month. Welch's t-test "
+        "because the cohorts can have different variances."
+    )
+    ab = ab_test(users, metric="receipts_per_month")
+    a1, a2, a3, a4 = st.columns(4)
+    a1.metric("Cohort A (2%)", f"{ab.mean_a:.2f}", help="Mean receipts/user/month")
+    a2.metric("Cohort B (3%)", f"{ab.mean_b:.2f}", help="Mean receipts/user/month")
+    a3.metric("Lift", f"{ab.lift_pct:.1%}",
+              delta=f"+{ab.lift_abs:.2f} rec/user/mo")
+    a4.metric(
+        "p-value",
+        f"{ab.p_value:.4f}",
+        delta="significant @ α=0.05" if ab.significant_at_05 else "not significant",
+        delta_color="normal" if ab.significant_at_05 else "off",
+    )
+    st.caption(
+        "Interpretation: paying 1 extra percentage point of cashback brings "
+        f"in {ab.lift_pct:.0%} more data per user. Whether that is worth it "
+        "depends on the price per data point our buyers are paying."
+    )
+
+    # Clustering ------------------------------------------------------------
+    st.markdown("### User segmentation — K-Means on category-spend shares")
+    st.caption(
+        "Each user is represented by the fraction of their spend in each "
+        "of the 6 catalog categories. K-Means groups them into segments "
+        "that brands can target. PCA is used only for the 2D plot."
+    )
+    cluster_n = st.slider("Number of clusters (K)", 2, 6, 4)
+    cr = cluster_users(users, n_clusters=cluster_n)
+
+    plot_df = pd.DataFrame({
+        "pc1": cr.coords_2d[:, 0],
+        "pc2": cr.coords_2d[:, 1],
+        "cluster": cr.labels.astype(str),
+        "archetype": users["archetype"].values,
+    })
+
+    chart_col, table_col = st.columns([1.4, 1], gap="large")
+    with chart_col:
+        st.scatter_chart(plot_df, x="pc1", y="pc2", color="cluster",
+                         height=380)
+    with table_col:
+        st.markdown("**Cluster centres** (avg USD/month per category)")
+        st.dataframe(
+            cr.centers_original.round(1),
+            hide_index=True, use_container_width=True,
+        )
+
+    # Aggregated market view -----------------------------------------------
+    st.markdown("### Aggregated market view")
+    st.caption(
+        "What our data buyers actually pay for: total monthly spend by "
+        "category, plus the cluster-level breakdown that lets them target "
+        "campaigns."
+    )
+    cat_totals = users[list(CATEGORY_COLS)].sum().rename(
+        lambda c: c.removeprefix("spend_")
+    ).sort_values(ascending=False)
+    st.bar_chart(cat_totals, height=240)
+
+    with st.expander("Show synthetic user table"):
+        st.dataframe(users, use_container_width=True)
+
+
 def page_about() -> None:
     st.title("About this project")
     st.markdown(
@@ -289,9 +395,14 @@ def main() -> None:
         page_icon=None,
         layout="wide",
     )
-    page = st.sidebar.radio("Navigation", ["Upload Receipt", "About this project"])
+    page = st.sidebar.radio(
+        "Navigation",
+        ["Upload Receipt", "B2B Analytics", "About this project"],
+    )
     if page == "Upload Receipt":
         page_upload()
+    elif page == "B2B Analytics":
+        page_b2b()
     else:
         page_about()
 
