@@ -97,9 +97,56 @@ Cada boleta es JSON con una llave `menu` que es lista de items, cada uno con su 
 
 ---
 
-## Día 3 — _(pendiente)_
+## Día 3 — 2026-06-03 — OCR pipeline
 
-_Por escribirse después del OCR pipeline (TrOCR / Donut)._
+### Qué hicimos
+Construimos la parte de la app que **lee el texto de una boleta**. Le pasás una foto y te devuelve las líneas de texto que aparecen en ella, en orden de arriba hacia abajo. Probamos sobre 20 boletas reales del dataset y medimos qué tan bien funciona.
+
+### Para qué sirve en la app
+Es el primer paso "real" del pipeline. Sin esto, no hay texto que el LLM pueda procesar. Volviendo a la analogía del restaurante: el OCR es la persona que recibe la boleta arrugada en la mano, la endereza, y la lee en voz alta. Después viene otra persona (el LLM) que toma esa lectura y la organiza en una lista limpia.
+
+### De qué semana del bootcamp viene
+**Week 7** (LLM and Gen AI) y **Week 8** (NLP & Architecture). Específicamente la idea de **usar modelos pre-entrenados** sin entrenarlos nosotros. EasyOCR usa dos modelos ya entrenados (uno para detectar dónde hay texto en la imagen, otro para reconocer cada palabra). Nosotros no entrenamos nada; los usamos directo.
+
+### Qué herramienta elegimos y por qué
+**EasyOCR.** Lo comparamos contra otras dos opciones:
+- **TrOCR (Microsoft):** modelo más moderno, basado en transformers (lo mismo que GPT/BERT), pero requiere un detector de texto separado — más trabajo de integración.
+- **Donut (Naver):** un modelo "todo-en-uno" pero ya está fine-tuned al dataset CORD, lo cual sería "trampa" (mataría el caso de uso del LLM más adelante).
+
+EasyOCR es la opción más práctica: una sola llamada (`reader.readtext(image)`) hace detección + reconocimiento. Funciona en CPU. Demoró 5-11 segundos por boleta en este equipo, aceptable para una demo (no para producción real-time, pero eso lo discutimos en la sección de ética).
+
+### Cómo medimos qué tan bien funciona
+Sobre 20 boletas:
+- **Recall promedio del 85%** — en promedio recuperamos 85% de los items que el ground-truth dice que están en la boleta
+- **100% de recall en 16 de las 20 boletas** — la mayoría sale perfecta
+- **Latencia: 13 segundos promedio, 24 segundos en el peor caso**
+
+El 15% que se pierde son boletas con texto muy borroso o escritura no-latina compleja. El LLM en el día 4 va a poder recuperar parte de esto.
+
+### Trozo clave
+La pipeline está encapsulada en una clase para que el resto de la app no se preocupe del backend:
+
+```python
+class OCRPipeline:
+    def __init__(self, languages=('en',), gpu=False):
+        # EasyOCR descarga modelos la primera vez, se queda en memoria
+        self._reader = easyocr.Reader(list(languages), gpu=gpu, verbose=False)
+
+    def read_text(self, image, separator='\n') -> str:
+        # Acepta PIL Image, numpy array, bytes, o path
+        return separator.join(ln.text for ln in self.read_lines(image))
+```
+
+Esto cumple con el requisito de **OOP del brief** (Week 1-2): clase con `__init__`, métodos públicos, encapsulación. Si mañana quisiéramos cambiar EasyOCR por TrOCR, sería un cambio de una sola clase, no de toda la app.
+
+### Branch usada
+`feat/ocr-pipeline` → merged a `main` cuando funcionó end-to-end. Esto cumple el requisito explícito del brief de "use branches".
+
+---
+
+## Día 4 — _(pendiente)_
+
+_Por escribirse después del LLM extractor con Gemini._
 
 ---
 
