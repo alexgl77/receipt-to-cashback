@@ -402,9 +402,79 @@ Los 5 tests viejos se reemplazaron por 7 tests nuevos que codifican la **semánt
 
 ---
 
-## Día 7 — _(pendiente)_
+## Día 7 — Analytics B2B + ética central
 
-_Por escribirse después del clustering, A/B test y B2B view._
+### Qué hicimos
+Construimos el lado **del negocio** de la app: si vendemos datos de consumo, ¿qué ve un comprador cuando los compra? Eso son tres cosas:
+
+1. **Segmentación de usuarios** (K-Means clustering) — agrupar consumidores por patrón de gasto
+2. **Inteligencia de precio del cashback** (A/B testing) — ¿cuánto pagar al usuario para que suba más boletas?
+3. **Página B2B Analytics** en la misma app de Streamlit
+4. **Documento de ética serio** — bajo el nuevo modelo de negocio, esto se vuelve **la sección más importante** del proyecto
+
+### Para qué sirve cada pieza
+
+**Clustering de usuarios:** un comprador (ej: una marca de café) no quiere comprarnos "datos de 1000 usuarios". Quiere comprarnos "el segmento de cafe-regulars que gastan >$100/mes en bebidas". K-Means agrupa a los 400 usuarios sintéticos en 4 clusters basándose en qué fracción de su gasto está en cada categoría (food/beverage/bakery/...). Cada cluster se vuelve un producto vendible.
+
+**A/B testing del cashback:** la decisión de negocio crítica es **¿pagamos 2% o 3% de cashback?** A los usuarios les gusta más 3%, pero a nosotros nos cuesta más. La pregunta es: ¿el 3% nos trae **más receipts/mes** (y por lo tanto más datos para vender) suficientes para compensar el costo extra?
+
+Lo simulamos con 200 usuarios en cada cohort (50/50), test estadístico Welch's t-test. **Resultado: 3% genera +28.8% receipts/mes vs 2%, p < 0.05 (significant).**
+
+**Página B2B Analytics:** todo lo de arriba expuesto en Streamlit como un dashboard real. Lo que un cliente vería si lo invitamos a una demo de ventas.
+
+### De qué semana del bootcamp viene
+- **Week 4-5 (Statistics for ML, Unsupervised Learning):** K-Means, PCA para visualización 2D
+- **Week 5 (Statistics for ML):** Welch's t-test, p-value, interpretación de significancia estadística
+- **Week 3-4 (Data Analysis applications):** uso de pandas + seaborn + matplotlib para el dashboard
+
+### Cómo verificamos que el clustering "funciona"
+Los 400 usuarios fueron generados a partir de 4 archetypes conocidos (café regular, family meals, sweet tooth, office worker). Si K-Means hace su trabajo, debería **recuperar los 4 archetypes** desde cero, sin saber cuál es cuál.
+
+El crosstab archetype × cluster en el notebook 07 muestra que sí: cada archetype cae predominantemente en un solo cluster. Eso valida el pipeline. En producción real no tendríamos labels para validar, usaríamos silhouette score + revisión manual del comprador.
+
+### El doc de ética que escribimos hoy
+Con el nuevo modelo (vender datos de consumo), la ética **no puede ser un parrafito** al final del README. Escribimos `docs/04_ethics.md` con 7 secciones:
+
+1. **Consentimiento informado** — qué le decimos al usuario que está vendiendo
+2. **Riesgo de privacidad** — qué revela una boleta (medicación, rutina, alcohol, dirección del comercio)
+3. **Sesgo del OCR** — fallas sistemáticas en scripts no-latinos perjudican a usuarios de ciertas regiones
+4. **Alucinaciones del LLM** — sub-pagar al usuario es éticamente peor que sobre-pagar
+5. **Combinaciones tóxicas de datos** — qué pasa cuando un comprador cruza "baby formula Q2 + alcohol Q2"
+6. **Auditabilidad externa** — DPA reviews, transparency report, bug bounty
+7. **Lo que NO estamos clamando** — honestidad sobre las limitaciones del proyecto
+
+Esto es lo que un evaluador serio del bootcamp (y un instructor como Yossi) busca. No es "ética cosmética" sino **rigor sobre las consecuencias de lo que construimos**.
+
+### Trozo clave
+La separación que mantenemos limpia hace que **los mismos `cluster_users()` y `ab_test()` funcionen idénticos en el notebook 07 y en la página B2B de Streamlit**:
+
+```python
+# En src/analytics.py
+def cluster_users(users: pd.DataFrame, n_clusters: int = 4) -> ClusteringResult: ...
+def ab_test(users: pd.DataFrame, metric: str = "receipts_per_month") -> ABTestResult: ...
+
+# En el notebook
+cr = cluster_users(users, n_clusters=4)
+ab = ab_test(users)
+
+# En el Streamlit B2B
+cr = cluster_users(users, n_clusters=cluster_n)
+ab = ab_test(users, metric="receipts_per_month")
+```
+
+Cero duplicación entre análisis y producto. Eso es lo que separa código "de notebook" del código "de producción".
+
+### Datos sintéticos — por qué y cómo lo declaramos
+CORD-v2 tiene boletas pero no asocia receipts a usuarios — no podemos hacer análisis longitudinal real. Por eso `src/synthetic_users.py` genera 400 usuarios con archetypes conocidos. **El lift del A/B (3% > 2%) está inyectado a propósito en la generación** y declarado abiertamente en el docstring del módulo. Esto no es trampa: es ser honesto sobre que estamos demostrando la **arquitectura** de medición, no descubriendo un hecho de negocio.
+
+### Branch usada
+`feat/analytics-and-ethics` → merged a `main` con todos los componentes funcionando.
+
+---
+
+## Día 8 — _(pendiente)_
+
+_Por escribirse después del deploy + README final + sección ética en la app._
 
 ---
 
