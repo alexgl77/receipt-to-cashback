@@ -53,9 +53,53 @@ Cambiamos "boletas chilenas reales para el demo" por "SROIE para todo (training 
 
 ---
 
-## Día 2 — _(pendiente)_
+## Día 2 — 2026-06-02 — Datos y catálogo
 
-_Por escribirse después de hacer el EDA del dataset SROIE._
+### Qué hicimos
+Bajamos el dataset público de boletas, lo miramos por dentro para entender qué tan parecido es a lo que vamos a recibir en producción, y construimos un catálogo de 110 productos contra el que la app va a hacer match.
+
+### Para qué sirve en la app
+Si la app fuera un restaurante, el dataset son los "platos de muestra" con los que el cocinero practicó. El catálogo es el menú real: cuando llega una nueva boleta, hay que mapear cada línea ("Iced Tea", "Nasi Putih") a un ítem del menú para saber qué cashback corresponde.
+
+### De qué semana del bootcamp viene
+**Week 3 y 4** — Data Analysis y aplicación de data analysis. Pandas para cargar el catálogo, Seaborn y Matplotlib para los gráficos del EDA, y la libreria `datasets` de HuggingFace para cargar el dataset público.
+
+### Cambio importante de dataset
+Originalmente íbamos a usar **SROIE**, pero el loader oficial está deprecado en la versión nueva de `datasets`. Cambiamos a **CORD-v2** (Naver Clova), que además tiene mejor anotación: SROIE solo etiqueta 4 campos (empresa, fecha, dirección, total), mientras que CORD-v2 etiqueta cada **línea de producto individual** con su nombre, cantidad y precio. Esto es exactamente lo que necesitamos para evaluar la pipeline OCR → LLM → FAISS.
+
+Yossi específicamente alertó este punto: "SROIE doesn't have product-line-item labels". Cambiar a CORD-v2 resuelve el problema antes de que se vuelva uno.
+
+### Lo que aprendimos mirando los datos
+- CORD-v2 tiene 1000 boletas: 800 train + 100 validation + 100 test
+- Las boletas son de restaurantes, cafés y panaderías (en su mayoría del sudeste asiático)
+- Cada boleta tiene **promedio 2.6 items** — la app va a hacer 2-3 lookups FAISS por boleta, muy barato
+- Hay 1479 nombres de productos únicos en el corpus de train, en una mezcla de inglés e indonesio transliterado ("Nasi Putih" = arroz blanco, "Iced Tea", "TWIST DONUT", etc.)
+- Esto **justificó cambiar el plan original** del catálogo: pensábamos en productos retail tipo Coca-Cola, pero CORD es comida — entonces el catálogo es F&B genérico (rice, donut, iced tea, etc.) que sí puede matchear
+
+### El catálogo final
+110 productos en 6 categorías: food (50), beverage (26), bakery (16), dessert (8), snack (5), misc (5). Cada uno con un nombre genérico, precio referencial y tasa de cashback (0% a 5%). Está en `data/catalog.csv`.
+
+### Trozo clave
+El notebook `notebooks/01_eda.ipynb` parsea los ground-truths así:
+
+```python
+def items_from(example):
+    gt = json.loads(example['ground_truth'])['gt_parse']
+    menu = gt.get('menu', [])
+    if isinstance(menu, dict):
+        menu = [menu]  # a veces es 1 item suelto, no lista
+    return [it['nm'].strip()
+            for it in menu
+            if isinstance(it, dict) and isinstance(it.get('nm'), str)]
+```
+
+Cada boleta es JSON con una llave `menu` que es lista de items, cada uno con su `nm` (nombre), `cnt` (cantidad) y `price` (precio). Esto es **exactamente la estructura que vamos a pedirle a Gemini que devuelva** cuando le pasemos el texto OCR — así la salida del LLM y el ground-truth tienen el mismo schema y podemos evaluar precisión directo.
+
+---
+
+## Día 3 — _(pendiente)_
+
+_Por escribirse después del OCR pipeline (TrOCR / Donut)._
 
 ---
 

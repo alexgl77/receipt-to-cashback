@@ -12,9 +12,11 @@ seaborn>=0.12.0
 scikit-learn>=1.3.0
 scipy>=1.11.0
 
-# Deep learning (Week 6)
-tensorflow>=2.15.0
-# torch and torchvision come in via transformers' deps when needed
+# Deep learning (Week 6) — PyTorch instead of TensorFlow because TF
+# does not yet have stable wheels for Python 3.13 (the only Python on
+# this machine). torchvision provides MobileNetV2 for transfer learning.
+torch>=2.2.0
+torchvision>=0.17.0
 
 # NLP + pre-trained models (Week 7-8)
 transformers>=4.40.0

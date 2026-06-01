@@ -30,7 +30,7 @@ A user takes a picture of a paper receipt and uploads it to a Streamlit app. A c
 
 | Layer | Tool | Where it comes from in the bootcamp |
 |---|---|---|
-| Image classification (CNN) | TensorFlow + MobileNetV2 (transfer learning) | Week 6 — Deep Learning |
+| Image classification (CNN) | PyTorch + torchvision MobileNetV2 (transfer learning) | Week 6 — Deep Learning |
 | OCR | TrOCR / Donut (pre-trained) | Week 7 — LLM & Gen AI |
 | Structured extraction (LLM) | Gemini 2.0 Flash + few-shot prompts | Week 9 — Prompt Engineering |
 | Vector search | FAISS + sentence-transformers | Week 8 — NLP & RAG |

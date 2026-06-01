@@ -1,0 +1,111 @@
+sku,name,category,subcategory,typical_price_usd,cashback_rate
+BEV001,Mineral Water,beverage,water,1.50,0.03
+BEV002,Sparkling Water,beverage,water,2.00,0.03
+BEV003,Iced Tea,beverage,tea,2.50,0.03
+BEV004,Hot Tea,beverage,tea,2.00,0.03
+BEV005,Green Tea,beverage,tea,2.50,0.03
+BEV006,Lemon Tea,beverage,tea,3.00,0.03
+BEV007,Iced Coffee,beverage,coffee,3.50,0.03
+BEV008,Hot Coffee,beverage,coffee,3.00,0.03
+BEV009,Espresso,beverage,coffee,2.50,0.03
+BEV010,Cappuccino,beverage,coffee,4.00,0.03
+BEV011,Latte,beverage,coffee,4.50,0.03
+BEV012,Americano,beverage,coffee,3.50,0.03
+BEV013,Mocha,beverage,coffee,4.50,0.03
+BEV014,Hot Chocolate,beverage,specialty,4.00,0.03
+BEV015,Milkshake,beverage,specialty,5.00,0.03
+BEV016,Smoothie,beverage,specialty,5.50,0.03
+BEV017,Lemonade,beverage,juice,3.00,0.03
+BEV018,Orange Juice,beverage,juice,3.50,0.03
+BEV019,Apple Juice,beverage,juice,3.50,0.03
+BEV020,Cola,beverage,soda,2.00,0.03
+BEV021,Diet Cola,beverage,soda,2.00,0.03
+BEV022,Lemon Soda,beverage,soda,2.00,0.03
+BEV023,Ginger Ale,beverage,soda,2.50,0.03
+BEV024,Energy Drink,beverage,soda,3.50,0.03
+BEV025,Beer,beverage,alcohol,5.00,0.00
+BEV026,Wine,beverage,alcohol,7.00,0.00
+FOOD001,White Rice,food,rice,3.00,0.05
+FOOD002,Fried Rice,food,rice,7.00,0.05
+FOOD003,Sticky Rice,food,rice,4.00,0.05
+FOOD004,Brown Rice,food,rice,3.50,0.05
+FOOD005,Noodle Soup,food,noodles,8.00,0.05
+FOOD006,Fried Noodles,food,noodles,7.50,0.05
+FOOD007,Ramen,food,noodles,9.50,0.05
+FOOD008,Spaghetti,food,pasta,10.00,0.05
+FOOD009,Carbonara,food,pasta,12.00,0.05
+FOOD010,Lasagna,food,pasta,11.00,0.05
+FOOD011,Margherita Pizza,food,pizza,12.00,0.05
+FOOD012,Pepperoni Pizza,food,pizza,14.00,0.05
+FOOD013,Vegetable Pizza,food,pizza,13.00,0.05
+FOOD014,Cheeseburger,food,burger,9.00,0.05
+FOOD015,Chicken Burger,food,burger,8.50,0.05
+FOOD016,Veggie Burger,food,burger,8.00,0.05
+FOOD017,Hot Dog,food,fastfood,5.00,0.05
+FOOD018,French Fries,food,fastfood,4.00,0.05
+FOOD019,Onion Rings,food,fastfood,4.50,0.05
+FOOD020,Chicken Wings,food,chicken,10.00,0.05
+FOOD021,Fried Chicken,food,chicken,9.50,0.05
+FOOD022,Grilled Chicken,food,chicken,11.00,0.05
+FOOD023,BBQ Chicken,food,chicken,12.00,0.05
+FOOD024,Chicken Curry,food,chicken,10.50,0.05
+FOOD025,Beef Steak,food,meat,18.00,0.05
+FOOD026,Roast Beef,food,meat,16.00,0.05
+FOOD027,Pork Ribs,food,meat,15.00,0.05
+FOOD028,Grilled Fish,food,seafood,14.00,0.05
+FOOD029,Fish and Chips,food,seafood,12.50,0.05
+FOOD030,Shrimp Tempura,food,seafood,13.00,0.05
+FOOD031,Sushi Roll,food,sushi,12.00,0.05
+FOOD032,Sashimi,food,sushi,16.00,0.05
+FOOD033,Nigiri,food,sushi,14.00,0.05
+FOOD034,California Roll,food,sushi,11.00,0.05
+FOOD035,Caesar Salad,food,salad,8.00,0.05
+FOOD036,Greek Salad,food,salad,8.50,0.05
+FOOD037,Garden Salad,food,salad,7.00,0.05
+FOOD038,Tomato Soup,food,soup,5.50,0.05
+FOOD039,Chicken Soup,food,soup,6.50,0.05
+FOOD040,Miso Soup,food,soup,4.50,0.05
+FOOD041,Beef Curry,food,curry,12.00,0.05
+FOOD042,Vegetable Curry,food,curry,10.00,0.05
+FOOD043,Pad Thai,food,asian,11.00,0.05
+FOOD044,Dim Sum,food,asian,9.00,0.05
+FOOD045,Spring Roll,food,asian,5.00,0.05
+FOOD046,Dumplings,food,asian,7.00,0.05
+FOOD047,Taco,food,mexican,4.50,0.05
+FOOD048,Burrito,food,mexican,9.00,0.05
+FOOD049,Quesadilla,food,mexican,8.00,0.05
+FOOD050,Nachos,food,mexican,7.50,0.05
+BAKE001,White Bread,bakery,bread,3.50,0.04
+BAKE002,Whole Wheat Bread,bakery,bread,4.00,0.04
+BAKE003,Bagel,bakery,bread,2.50,0.04
+BAKE004,Croissant,bakery,pastry,3.50,0.04
+BAKE005,Danish Pastry,bakery,pastry,3.00,0.04
+BAKE006,Cinnamon Roll,bakery,pastry,3.50,0.04
+BAKE007,Donut,bakery,donut,2.00,0.04
+BAKE008,Glazed Donut,bakery,donut,2.50,0.04
+BAKE009,Chocolate Donut,bakery,donut,2.50,0.04
+BAKE010,Muffin,bakery,muffin,3.00,0.04
+BAKE011,Blueberry Muffin,bakery,muffin,3.50,0.04
+BAKE012,Chocolate Chip Muffin,bakery,muffin,3.50,0.04
+BAKE013,Cheese Bun,bakery,bun,3.00,0.04
+BAKE014,Red Bean Bun,bakery,bun,3.00,0.04
+BAKE015,Cheese Tart,bakery,tart,4.00,0.04
+BAKE016,Egg Tart,bakery,tart,3.00,0.04
+DESS001,Vanilla Ice Cream,dessert,icecream,4.50,0.04
+DESS002,Chocolate Ice Cream,dessert,icecream,4.50,0.04
+DESS003,Cheesecake,dessert,cake,6.50,0.04
+DESS004,Chocolate Cake,dessert,cake,6.00,0.04
+DESS005,Tiramisu,dessert,cake,7.00,0.04
+DESS006,Brownie,dessert,cake,4.00,0.04
+DESS007,Cookie,dessert,cookie,2.00,0.04
+DESS008,Pudding,dessert,pudding,4.00,0.04
+SNACK001,Potato Chips,snack,chips,3.50,0.02
+SNACK002,Tortilla Chips,snack,chips,3.50,0.02
+SNACK003,Popcorn,snack,popcorn,4.00,0.02
+SNACK004,Mixed Nuts,snack,nuts,5.00,0.02
+SNACK005,Chocolate Bar,snack,candy,2.50,0.02
+MISC001,Plastic Bag Small,misc,packaging,0.10,0.00
+MISC002,Plastic Bag Medium,misc,packaging,0.15,0.00
+MISC003,Paper Bag,misc,packaging,0.20,0.00
+MISC004,Takeout Container,misc,packaging,0.30,0.00
+MISC005,Napkins,misc,packaging,0.50,0.00
