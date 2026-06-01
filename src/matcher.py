@@ -30,10 +30,14 @@ def match_extraction(
 ) -> list[MatchedLineItem]:
     """Match each extracted LineItem to its nearest catalog SKU.
 
-    `score_threshold` defaults to 0.35 (cosine on MiniLM-L6-v2). Below
-    that, items like "PLASTIC BAG SMALL" or operator codes will still
-    return *a* match but with low confidence, so the CashbackEngine can
-    skip them.
+    `score_threshold` (cosine similarity) gates the `accepted` flag.
+    Under the market-research business model the flag does **not**
+    decide whether the line earns cashback — every priced line does.
+    What it controls is *classification*: accepted lines are tagged
+    with the catalog category (food / beverage / …) and contribute to
+    the categorised-spend share that data buyers care about;
+    rejected lines still pay out at the strategy's base rate but are
+    labelled "uncategorized".
     """
     out: list[MatchedLineItem] = []
     for it in extraction.items:

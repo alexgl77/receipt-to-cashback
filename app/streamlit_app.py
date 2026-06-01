@@ -1,14 +1,11 @@
 """Receipt-to-Cashback — Streamlit MVP.
 
-Wraps the day 1–5 spine (OCR → LLM → FAISS → CashbackEngine) into a
-two-page web app:
+Wraps the OCR -> LLM -> FAISS -> CashbackEngine spine into a two-page
+web app. Business model exposed in the UI: market-research data
+acquisition (flat cashback per receipt, value extracted from the data
+itself).
 
-* **Upload Receipt** — the actual product flow.
-* **About this project** — a short, non-technical description plus a
-  link to the simple-explanation log for the demo audience.
-
-Run locally with:
-
+Run locally:
     streamlit run app/streamlit_app.py
 """
 
@@ -34,7 +31,7 @@ from src.cashback_engine import (
     CashbackEngine,
     CashbackResult,
     FlatStrategy,
-    PerSkuStrategy,
+    TieredStrategy,
 )
 from src.llm_extractor import LLMExtractionError, LLMExtractor, ReceiptExtraction
 from src.matcher import MatchedLineItem, match_extraction
@@ -55,7 +52,7 @@ def get_llm() -> LLMExtractor:
     return LLMExtractor()
 
 
-@st.cache_resource(show_spinner="Embedding catalog into FAISS…")
+@st.cache_resource(show_spinner="Embedding catalog into FAISS (multilingual)…")
 def get_index() -> CatalogIndex:
     return CatalogIndex.from_csv(ROOT / "data" / "catalog.csv")
 
@@ -72,25 +69,41 @@ def get_sample_receipts() -> list[Image.Image]:
 # ----- pipeline runner ------------------------------------------------------
 
 
-def run_spine(image: Image.Image, strategy_name: str) -> tuple[
+STRATEGY_CHOICES = {
+    "Flat 2% (default)": FlatStrategy(0.02),
+    "Flat 3%": FlatStrategy(0.03),
+    "Tiered (food 2.5%, bev 2%, misc 0%)": TieredStrategy(),
+}
+
+
+@st.cache_data(show_spinner=False)
+def cached_ocr_text(image_bytes: bytes) -> str:
+    """Cache OCR by raw image bytes so repeated demo uploads are instant."""
+    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    return get_ocr().read_text(image)
+
+
+@st.cache_data(show_spinner=False)
+def cached_extraction(ocr_text: str) -> ReceiptExtraction:
+    return get_llm().extract(ocr_text)
+
+
+def run_spine(image: Image.Image, strategy_label: str) -> tuple[
     str,
     ReceiptExtraction,
     list[MatchedLineItem],
     CashbackResult,
 ]:
-    ocr = get_ocr()
-    llm = get_llm()
     index = get_index()
-    strategy = (
-        FlatStrategy(flat_rate=0.04) if strategy_name == "Flat 4%" else PerSkuStrategy()
-    )
-    engine = CashbackEngine(strategy)
+    engine = CashbackEngine(STRATEGY_CHOICES[strategy_label])
 
     progress = st.progress(0, text="Running OCR…")
-    ocr_text = ocr.read_text(image)
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    ocr_text = cached_ocr_text(buf.getvalue())
 
     progress.progress(40, text="Asking Gemini to structure items…")
-    extraction = llm.extract(ocr_text)
+    extraction = cached_extraction(ocr_text)
 
     progress.progress(80, text="Matching items against catalog (FAISS)…")
     matched = match_extraction(extraction, index)
@@ -109,27 +122,30 @@ def run_spine(image: Image.Image, strategy_name: str) -> tuple[
 def page_upload() -> None:
     st.title("Receipt-to-Cashback")
     st.caption(
-        "Upload a receipt photo. We'll OCR it, parse it with Gemini, match "
-        "items against our 110-SKU catalog, and tell you how much cashback "
-        "you earned. Built as the Capstone project for the Developers "
+        "A market-research app: scan a receipt, we pay you flat cashback in "
+        "exchange for the itemised consumption data, which we anonymise and "
+        "sell in aggregate. Built as the Capstone project for the Developers "
         "Institute GenAI & ML bootcamp 2026."
     )
 
     with st.sidebar:
         st.subheader("Settings")
-        strategy = st.radio(
+        strategy_label = st.radio(
             "Cashback strategy",
-            ["Per-SKU rates", "Flat 4%"],
+            list(STRATEGY_CHOICES.keys()),
             help=(
-                "Per-SKU uses the per-product rate stored in the catalog "
-                "(0–5%). Flat 4% gives a uniform 4% on every accepted item."
+                "All strategies pay cashback on every priced line — the "
+                "catalog only changes the category label, not eligibility. "
+                "Tiered strategy uses different rates per category; misc "
+                "items (plastic bags, packaging) pay 0% because they have "
+                "no data value."
             ),
         )
         st.divider()
         st.subheader("Try a sample receipt")
         st.caption(
             "If you don't have a receipt photo handy, pick one from the "
-            "public CORD-v2 dataset."
+            "public CORD-v2 dataset (1000 real receipts, Naver Clova 2019)."
         )
         try:
             samples = get_sample_receipts()
@@ -161,12 +177,12 @@ def page_upload() -> None:
         st.image(image, caption="Receipt", use_container_width=True)
     with col_right:
         try:
-            ocr_text, extraction, matched, result = run_spine(image, strategy)
+            ocr_text, extraction, matched, result = run_spine(image, strategy_label)
         except LLMExtractionError as exc:
             st.error(
-                "We couldn't reliably structure this receipt. The text the "
-                "OCR returned may be too noisy, or the model is being "
-                "unusually creative today. Try a different photo."
+                "We couldn't reliably structure this receipt. The OCR text "
+                "may be too noisy or the model is being unusually creative "
+                "today. Try a different photo."
             )
             with st.expander("Technical detail"):
                 st.code(str(exc))
@@ -177,9 +193,11 @@ def page_upload() -> None:
             value=f"{result.total_cashback:,.2f} {extraction.currency or ''}".strip(),
             delta=f"{result.effective_rate:.1%} effective rate",
         )
+        cat_share = result.categorized_share
         st.caption(
             f"Total spend: {result.total_spend:,.2f} "
             f"{extraction.currency or ''}".strip()
+            + f"  ·  Categorised data share: {cat_share:.0%}"
             + (f"  ·  Merchant: {extraction.merchant}" if extraction.merchant else "")
             + (f"  ·  Date: {extraction.date}" if extraction.date else "")
         )
@@ -189,16 +207,21 @@ def page_upload() -> None:
             [
                 {
                     "Item (from receipt)": ln.item_name,
+                    "Category": ln.category,
                     "Matched SKU": ln.matched_sku,
                     "Spend": round(ln.line_total, 2),
-                    "Rate": f"{ln.rate * 100:.1f}%",
+                    "Rate": f"{ln.rate * 100:.2f}%",
                     "Cashback": round(ln.cashback, 2),
-                    "Accepted": "yes" if ln.accepted else "no",
                 }
                 for ln in result.lines
             ],
             hide_index=True,
             use_container_width=True,
+        )
+        st.caption(
+            "Every priced line earns cashback. Uncategorised lines still pay "
+            "out — they are simply less valuable to the data buyer on the "
+            "other side."
         )
 
         with st.expander("Show raw OCR text"):
@@ -214,24 +237,45 @@ def page_about() -> None:
 **Receipt-to-Cashback** is the Capstone project for the Developers Institute
 **GenAI & Machine Learning Bootcamp 2026**.
 
-The app demonstrates a full GenAI pipeline applied to a real-world product
-idea — turning a receipt photo into a structured cashback reward — using
-nothing but pre-trained models stitched together with a small amount of
-business logic.
+### Business model
 
-**Pipeline (in plain English):**
+We are a **market-research data acquisition platform**. Users scan a receipt;
+we pay them a flat cashback in exchange for their itemised consumption data,
+which we anonymise and sell in aggregate to brands, retailers and research
+firms.
+
+The cashback is *the price we pay for the data*, not a partner rebate. That
+means:
+
+* **Every priced line earns cashback**, even items we can't classify.
+* The catalog exists to **enrich** the data we sell (food / beverage / …),
+  not to gate eligibility.
+* Higher cashback rates buy us more users — which lets us sell richer data.
+  That is the day-7 A/B-test question.
+
+### Pipeline (in plain English)
 
 1. **OCR** — read the text out of the receipt image (EasyOCR).
-2. **Structuring** — ask Gemini 2.5 Flash to turn that text into a clean
-   list of items, prices and totals, validated against a strict schema.
-3. **Matching** — embed each item with sentence-transformers and find
-   the closest product in our 110-SKU catalog using FAISS.
-4. **Cashback** — apply category-aware reward rules and show the result.
+2. **Structuring** — ask Gemini 2.5 Flash Lite to turn that text into a
+   clean list of items, prices and totals, validated against a strict
+   Pydantic schema.
+3. **Classification** — embed each item with multilingual
+   sentence-transformers and find the closest product in our 110-SKU
+   catalog using FAISS.
+4. **Cashback** — apply the chosen strategy and show the result.
 
-The full daily build log, in non-technical language, lives in
-[`docs/00_simple_explanation.md`](https://github.com/alexgl77/receipt-to-cashback/blob/main/docs/00_simple_explanation.md).
+### Ethics
 
-**Source:** https://github.com/alexgl77/receipt-to-cashback
+This model lives or dies by **consent, anonymisation and the user's
+right to know what is sold**. See
+[`docs/04_ethics.md`](https://github.com/alexgl77/receipt-to-cashback/blob/main/docs/04_ethics.md)
+for the full discussion.
+
+### Sources
+
+* Full daily build log in plain language:
+  [`docs/00_simple_explanation.md`](https://github.com/alexgl77/receipt-to-cashback/blob/main/docs/00_simple_explanation.md)
+* Source code: https://github.com/alexgl77/receipt-to-cashback
 """
     )
 

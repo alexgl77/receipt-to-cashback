@@ -18,11 +18,15 @@ Upload a photo of a receipt, get cashback. The app validates the image with a CN
 
 ## Motivation
 
-Cashback apps already exist (Fintonic, Beruby, Rappi rewards), but most rely on credit card data or partnership APIs with merchants. There is no easy way for a small player to bootstrap a cashback product *without* those partnerships. This project explores whether a **pure computer-vision + LLM pipeline** can replace the merchant-API dependency by directly reading the receipt the user already has.
+The app is positioned as a **market-research data-acquisition platform**. Users scan their receipts and receive a flat cashback (default 2 %) in exchange for the itemised consumption data, which the platform anonymises, classifies and (in the business model) sells in aggregate to brands, retailers and consultancies.
 
-The business value, if it works, is twofold:
-1. **B2C:** users get cashback on any purchase, anywhere.
-2. **B2B:** the aggregated, anonymised consumption data is valuable to market-research firms — but this raises serious ethical questions (covered in the ethics doc).
+This framing matters because it shapes every downstream design choice:
+
+1. **Eligibility is universal.** Every priced line earns cashback — the data has value regardless of whether we can map the item to our catalog.
+2. **The catalog is a classifier, not a gatekeeper.** Its role is to enrich the data we hold (food / beverage / bakery / …), not to decide who gets paid.
+3. **Ethics is central, not decorative.** Selling aggregated consumption data turns privacy, informed consent and anonymisation from "nice to have" into the core risk of the product.
+
+The project explores whether a pure **OCR → LLM → vector-search** pipeline can produce a structured, queryable, monetisable dataset from raw receipt photos with no merchant partnerships required.
 
 ---
 
