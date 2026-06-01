@@ -312,9 +312,63 @@ Cada paso tiene un tipo bien definido (str → ReceiptExtraction → list[Matche
 
 ---
 
-## Día 6 — _(pendiente)_
+## Día 6 — Streamlit MVP — la app que la gente ve
 
-_Por escribirse después de la app Streamlit MVP._
+### Qué hicimos
+Envolvimos todo el pipeline en una **interfaz web**: subís una foto, ves la lista de productos detectados, y te aparece cuánto cashback ganaste. También agregamos la opción de probar con una boleta de ejemplo del dataset, para que la demo funcione aunque no tengamos boleta a mano.
+
+### Para qué sirve en la app
+Es **la cara de todo**. Hasta ayer, el proyecto era código que funcionaba pero solo en consola. Hoy se convirtió en algo que cualquier persona puede usar abriendo un navegador.
+
+Analogía: hasta el día 5 teníamos motor, ruedas, asientos y tablero — pero todo desarmado en el suelo. El día 6 los atornillamos al chasis y le pusimos las puertas. Ahora es un auto.
+
+### De qué semana del bootcamp viene
+**No vino del bootcamp** — Streamlit es la tecnología que el brief pide pero el curso no enseñó. La aprendimos en el camino. Es un framework de Python donde escribís código secuencial normal y él lo convierte en página web (botones, sliders, gráficos, tablas) automáticamente.
+
+### Decisiones de diseño que importan
+1. **Caching de recursos pesados.** El modelo de OCR (~200 MB), el cliente de Gemini, y el índice FAISS se cargan **una sola vez por sesión** usando `@st.cache_resource`. Sin esto, cada vez que el usuario sube una foto se reinstalaría todo desde cero (10+ segundos extra cada vez).
+2. **Progress bar en tiempo real.** El pipeline tarda ~40 segundos. Sin feedback visual el usuario piensa que la app se colgó. Mostramos % de progreso con texto: "Running OCR... Asking Gemini... Matching items... Done".
+3. **Manejo de errores tipado.** Si Gemini falla persistentemente y se levanta `LLMExtractionError`, mostramos un mensaje amigable ("could not structure this receipt") en lugar de stack trace. Esto es lo que Yossi nos dijo: *"handle that path or the demo breaks live"*.
+4. **Sample receipts incluidas.** En la sidebar hay un selector de "Sample receipt" que carga una boleta de CORD-v2 sin que el usuario tenga que subir nada. Critico para la demo del día 11 — si la wifi falla, igual podemos demostrar.
+5. **Selector de estrategia de cashback en sidebar.** Per-SKU vs Flat 4%. Esto pre-arma el A/B test del día 7 visualmente.
+6. **Dos páginas:** "Upload Receipt" (el producto) y "About this project" (descripción no técnica para la audiencia del demo).
+
+### Cómo se ve la pantalla principal
+Una vez que subís foto (o eliges sample):
+- **Columna izquierda:** la foto de la boleta
+- **Columna derecha:**
+  - Número grande en verde: el cashback total (con la moneda inferida)
+  - Tabla con cada línea: item del recibo, SKU matcheado, gasto, tasa aplicada, cashback, accepted yes/no
+  - Dos expanders: "Show raw OCR text" y "Show Gemini extraction JSON" — útiles para el demo cuando alguien pregunta "¿pero qué hace por dentro?"
+
+### Cómo correrla
+Desde la carpeta del proyecto:
+```bash
+./.venv/Scripts/streamlit run app/streamlit_app.py
+```
+Esto abre el navegador en http://localhost:8501.
+
+### Trozo clave
+Toda la magia está en una función de 4 líneas que orquesta el spine:
+
+```python
+def run_spine(image, strategy_name):
+    ocr_text   = get_ocr().read_text(image)
+    extraction = get_llm().extract(ocr_text)
+    matched    = match_extraction(extraction, get_index())
+    return get_cashback_engine(strategy_name).compute(matched)
+```
+
+Esto es **toda** la lógica de negocio de la app. El resto es Streamlit pidiéndole inputs al usuario y mostrando los outputs. La separación entre "cerebro" (módulos `src/`) y "cara" (app) es lo que va a permitir, en el futuro, reemplazar Streamlit por una app de iPhone sin reescribir nada del cerebro.
+
+### Branch usada
+`feat/streamlit-app` → merged a `main` cuando se verificó que arranca limpio.
+
+---
+
+## Día 7 — _(pendiente)_
+
+_Por escribirse después del clustering, A/B test y B2B view._
 
 ---
 
