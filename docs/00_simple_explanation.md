@@ -43,9 +43,13 @@ Cada librería tiene un nombre de semana al lado: así, cuando alguien me pregun
 - Se separó este proyecto del repo del bootcamp (la carpeta `final project/` ahora es repo aparte)
 
 ### Lo que queda como acción humana del día 1
-- Pegar el contenido de [docs/01_proposal.md](01_proposal.md) en el Final Project Proposal Form y enviárselo a Yossi
+- Mandar la idea a Yossi por Slack (mensaje preparado) y esperar aprobación
+- Una vez aprobada: pegar el contenido de [docs/01_proposal.md](01_proposal.md) en el form de la plataforma
 - Crear el Trello board copiando las cards de [docs/06_trello_cards.md](06_trello_cards.md) y mandar el link a Yossi
 - (Cuando llegue el día 4) Generar la API key de Gemini en https://aistudio.google.com/app/apikey
+
+### Decisión de scope ajustada al final del día 1
+Cambiamos "boletas chilenas reales para el demo" por "SROIE para todo (training y demo)". Razón: simplicidad y reproducibilidad — la app no necesita salir del laboratorio para demostrar el pipeline. Como consecuencia, el catálogo de productos también se cambia de "chileno" a "genérico internacional" (Coca-Cola, Pepsi, etc.), para que los items extraídos por el OCR matcheen contra el catálogo. La narrativa pierde el toque local pero gana coherencia técnica.
 
 ---
 

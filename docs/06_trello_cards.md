@@ -43,11 +43,11 @@ Copiá cada bloque debajo como una card. Cada card tiene **título + descripció
 
 ### 📅 Card: "Day 2 — EDA + synthetic catalog"
 **Label:** `data` `notebook`
-**Descripción:** Explorar el dataset SROIE 2019 (descargar de HuggingFace o Kaggle). Crear catálogo sintético de ~100 productos chilenos con categorías y marcas.
+**Descripción:** Explorar el dataset SROIE 2019 (descargar de HuggingFace o Kaggle). Crear catálogo sintético de ~100 productos internacionales genéricos (coherente con receipts en inglés del SROIE).
 **Checklist:**
 - [ ] Descargar dataset SROIE (`datasets` de HuggingFace: `darentang/sroie`)
 - [ ] Notebook `01_eda.ipynb`: cantidad de receipts, distribuciones, ejemplos visuales
-- [ ] Crear `data/catalog.csv` con ~100 productos chilenos
+- [ ] Crear `data/catalog.csv` con ~100 productos internacionales (Coca-Cola, Pepsi, Lay's, etc.)
 - [ ] Agregar entrada al `docs/00_simple_explanation.md` día 2
 
 ### 📅 Card: "Day 3 — OCR pipeline"

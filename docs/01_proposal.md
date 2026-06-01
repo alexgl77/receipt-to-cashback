@@ -48,10 +48,10 @@ A Streamlit web app with:
    - CNN classifier (MobileNetV2 fine-tuned) → "is this a receipt? what type of store?"
    - OCR (TrOCR/Donut, pre-trained) → raw text.
    - LLM extractor (Gemini 2.0 Flash with few-shot prompts) → structured JSON {items, prices, date, total}.
-   - FAISS vector search → match each item line against a product catalog of ~100 chilean products.
+   - FAISS vector search → match each item line against a generic catalog of ~100 international products.
    - Python `CashbackEngine` (OOP) → applies business rules and returns the cashback amount.
 3. **User dashboard:** receipt history, total cashback, breakdown by category.
-4. **B2B analytics page:** k-means clustering of users by spending pattern + A/B-test simulation of two cashback strategies (fixed % vs category-based %).
+4. **B2B analytics page:** k-means clustering of (simulated) users by spending pattern + A/B-test simulation of two cashback strategies (fixed % vs category-based %).
 5. **Ethics section** in the README and the app itself.
 
 ---
@@ -79,9 +79,8 @@ A Streamlit web app with:
 
 ## Dataset
 
-- **Training / evaluation:** SROIE 2019 (Scanned Receipts OCR and Information Extraction) — public benchmark with hundreds of annotated receipts, used by major OCR research.
-- **Final demo:** 5–10 photos of real Chilean receipts taken with my phone.
-- **Catalog:** synthetic, ~100 Chilean products (Coca-Cola, Cachantún, Súper8, Soprole, etc.) with categories and brands.
+- **Training / evaluation / demo:** SROIE 2019 (Scanned Receipts OCR and Information Extraction) — public benchmark with hundreds of annotated receipts, used as the single source of truth for both development and demonstration. Keeps the project reproducible and avoids the noise of one-off real photos.
+- **Catalog:** synthetic, ~100 generic international products (Coca-Cola, Pepsi, Lay's, Colgate, Heinz, etc.) with categories and brands. Chosen for coherence with SROIE's English-language receipts so the FAISS semantic match is meaningful in the demo.
 
 ---
 
