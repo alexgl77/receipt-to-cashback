@@ -1,0 +1,38 @@
+# Core
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# Data wrangling + viz (Week 3-4)
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Classical ML (Week 5)
+scikit-learn>=1.3.0
+scipy>=1.11.0
+
+# Deep learning (Week 6)
+tensorflow>=2.15.0
+# torch and torchvision come in via transformers' deps when needed
+
+# NLP + pre-trained models (Week 7-8)
+transformers>=4.40.0
+sentence-transformers>=2.5.0
+spacy>=3.7.0
+
+# Vector DB (Week 8)
+faiss-cpu>=1.7.4
+
+# OCR (Week 7 / pre-trained)
+Pillow>=10.0.0
+
+# LLM API (Week 9)
+google-generativeai>=0.5.0
+
+# App (gap from bootcamp)
+streamlit>=1.30.0
+
+# Notebooks
+jupyter>=1.0.0
+ipykernel>=6.27.0
