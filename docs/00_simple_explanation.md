@@ -571,9 +571,38 @@ Esta no es de una semana técnica — es **comunicación de un proyecto**. Lo qu
 
 ---
 
-## Día 10 — _(pendiente)_
+## Día 10 — El mapa del proyecto + checklist de submission
 
-_Por escribirse después de pulir bugs + submission en la plataforma del bootcamp._
+### Qué hicimos
+Dos documentos que **no agregan código** pero son la diferencia entre llegar al demo improvisando y llegar listo.
+
+1. **`docs/08_project_map.md`** — el mapa no-técnico de TODO el proyecto. Cada pieza, dónde vive (computador / GitHub / app local / Hugging Face), qué hace en analogías concretas, cómo verificarla sin creerme. Tablas, no párrafos. Pensado para que Alex pueda explicar el proyecto a un familiar, a un reclutador o a Yossi en una conversación de 5 minutos sin abrir el código.
+2. **`docs/09_submission_checklist.md`** — los 30+ ítems que hay que tener tildados antes de hacer Submit en la plataforma del bootcamp. Organizado en 8 categorías: Code, Deployed app, Video, PPT, Trello, Portfolio, Rehearsal, Backups.
+
+### Para qué sirve
+**El mapa** te ahorra el momento del demo donde alguien pregunta "¿y eso cómo funciona?" y vos no sabés explicarlo. Cada pieza tiene su archivo + su analogía + qué hace en una frase.
+
+**La checklist** te ahorra el momento de submit donde te das cuenta que falta el QR code en el slide 1, o que la app remota está caída, o que el `.env` quedó accidentalmente en el repo. Es paranoia productiva.
+
+### De qué semana del bootcamp viene
+Esto no es de una semana técnica — es **proyect closeout**: el último 10% del trabajo que hace que el primer 90% se pueda mostrar. La diferencia entre un capstone que "funciona en mi computador" y uno que "el evaluador puede tocar y entender".
+
+### Lo que falta para hacer Submit
+Marcado en `docs/09_submission_checklist.md`. Resumen:
+- HF Spaces deployado y con URL pública
+- PPT armado desde `presentation/PPT_OUTLINE.md`
+- Video Loom grabado siguiendo `docs/05_demo_script.md`
+- Trello board creado y compartido con Yossi
+- Rehearsal cronometrado
+
+Cuando los 30 ítems estén tildados, se hace Submit en la plataforma.
+
+### Branch usada
+Trabajamos directo sobre `main` porque son docs y no hay riesgo de romper código. Commit + push directo.
+
+---
+
+## Cómo usar este doc para la presentación
 
 ---
 
