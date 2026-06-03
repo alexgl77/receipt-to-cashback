@@ -522,6 +522,61 @@ Esta no es de una semana técnica del bootcamp — es **higiene de proyecto prof
 
 ---
 
+## Día 9 — PPT outline + guion del video Loom
+
+### Qué hicimos
+Pasamos del **código terminado** al **proyecto presentable**. Dos artefactos:
+
+1. **`presentation/PPT_OUTLINE.md`** — el contenido de cada uno de los 8 slides del PPT, con qué va escrito en el slide y qué dice el speaker, cronometrado por slide. Total: 4 min 10 s (target: 4 min — sale ajustado, durante el ensayo se recortan 10 s).
+2. **`docs/05_demo_script.md`** — el guion del video Loom de 3 minutos. Cronometrado por sección, con instrucciones de qué hacer en pantalla y qué decir mientras tanto, más una pre-flight checklist y planes de contingencia por si algo falla en vivo.
+
+### Para qué sirve
+**El PPT** es lo que ve el jurado durante 4 minutos. El video Loom es lo que ve durante otros 3-4 minutos. Sin un guion concreto se nos pueden ir 6 minutos en el primer slide y atropellarnos en los demás. Tener todo cronometrado de antemano garantiza que entramos en los 10 minutos máximos del brief (PPT + video + Q&A).
+
+### Cómo está estructurado el PPT (8 slides, 4 min)
+1. **Title** — pitch en una línea + QRs al repo y a la app live
+2. **El problema** — por qué un sistema así existe (gap en market research)
+3. **El pipeline** — un solo diagrama, sin texto
+4. **Tools** — tabla de stack con la semana del bootcamp de cada herramienta (Streamlit marcado como **self-taught**)
+5. **What works (números)** — latencia, tests, link al live
+6. **Honest challenges** — los 3 pivotes técnicos (business model, multilingual, performance)
+7. **Ethics** — la sección que bajo el nuevo modelo es centro, no decoración
+8. **Future steps + thanks** — qué dejaríamos para semana 12 + agradecimientos (Yossi explícito)
+
+### Cómo está estructurado el video Loom (3 min)
+- 00:00–00:15 — intro (no re-explico lo del PPT)
+- 00:15–01:15 — demo en vivo de upload + resultado
+- 01:15–01:45 — B2B Analytics page
+- 01:45–02:00 — Ethics page
+- 02:00–02:45 — code highlights (CashbackEngine + LLMExtractor + vector_store)
+- 02:45–03:00 — close
+
+Cada bloque tiene **acción en pantalla** + **lo que se dice mientras tanto**. La pre-flight checklist (calentar HF Spaces 60 s antes, browser zoom 110%, notifications off, 2 boletas listas) evita los problemas típicos del demo.
+
+### Plan de contingencia para el día del demo
+El guion incluye **recovery plans**: qué hacer si HF Spaces está cold, si Gemini rate-limita, si HF está caído entero (correr local), si el OCR misread un sample. No esperamos perfección, esperamos resiliencia.
+
+### Lo que falta para que el PPT esté listo (acciones del usuario)
+1. **Abrir el template del bootcamp en PowerPoint o Google Slides**
+2. **Pegar el contenido slide por slide desde `presentation/PPT_OUTLINE.md`**
+3. **Generar los visuales que faltan:** QR codes (cualquier generador online), screenshots de las 3 páginas del app (Upload con resultado, B2B Analytics, Ethics), diagrama del pipeline limpio (ya está en `docs/02_architecture.md` para copiar)
+4. **Grabar el video con Loom** siguiendo `docs/05_demo_script.md` (calentar HF Spaces 60 s antes)
+5. **Ensayar 2 veces cronometrado** para que el flow esté natural
+
+### De qué semana del bootcamp viene
+Esta no es de una semana técnica — es **comunicación de un proyecto**. Lo que separa un capstone "funcional pero invisible" de uno "claro y memorable" es que el speaker pueda explicar las decisiones de diseño en lenguaje simple. Por eso la bitácora del día 1 al 8 era el guion que ya teníamos — hoy solo lo refactorizamos a slides + script.
+
+### Branch usada
+`feat/presentation-materials` → merged a `main` con `presentation/PPT_OUTLINE.md` y `docs/05_demo_script.md`.
+
+---
+
+## Día 10 — _(pendiente)_
+
+_Por escribirse después de pulir bugs + submission en la plataforma del bootcamp._
+
+---
+
 ## Cómo usar este doc para la presentación
 
 Al final del proyecto (día 9), este archivo va a tener ~10 entradas. Para el PPT:
