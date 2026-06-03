@@ -100,11 +100,28 @@ different ethical weight:
 | LLM invents an item that wasn't on the receipt | The platform overpays cashback | Acceptable; we eat the cost. |
 | LLM drops a line that *was* on the receipt | The user is silently underpaid | **Not acceptable.** |
 
-The current code does not detect the second case. A production
-version would compare the LLM's `total` against the sum of `line_total`
-and flag drift above a tolerance for human review before crediting
-cashback. We have not implemented this — flagging it here is the
-honest thing.
+**Update (day 10.5):** the over-paying variant of this failure
+mode actually showed up during rehearsal. CORD train[0] has items
+with quantities ("3 x Bbk Panggang", "2 x Tahu Goreng", "3 x Free
+Ice Tea") and a couple of items that appear twice in the OCR; the
+LLM extractor counted some of them double, returning a `line_sum`
+of ~2.72 M IDR against a declared Grand Total of ~1.59 M IDR — a
+70 % over-count. At 2 % cashback that's an extra ~22,000 IDR paid
+out per receipt.
+
+The fix shipped: `CashbackEngine` now takes the receipt's declared
+`total` and, when `|line_sum − declared| / declared > 10 %`, scales
+the cashback to match the declared total and surfaces a yellow
+warning in the UI. The line table still shows the unscaled
+extraction (so the user can see what we read), but the headline
+cashback is capped to the real total.
+
+What we still do NOT detect: the *under-paying* variant where the
+LLM drops a line entirely. The same drift guard catches it
+*statistically* (sum will be lower than declared), but we currently
+treat it the same way — scale down — which underpays the user.
+The honest fix is to flag under-counts for human review instead of
+silently scaling, and we have not implemented that.
 
 ---
 

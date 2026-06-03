@@ -92,9 +92,13 @@ class LineCashback:
 @dataclass
 class CashbackResult:
     lines: list[LineCashback]
-    total_spend: float
+    total_spend: float            # what we actually pay cashback on
     total_cashback: float
     strategy: str
+    line_sum: float               # raw sum of line_totals (may differ from total_spend if total_was_corrected)
+    declared_total: float | None  # the grand total the LLM extracted from the receipt
+    total_was_corrected: bool     # True if we trusted declared_total over line_sum due to >10% drift
+    drift_pct: float | None       # signed (line_sum - declared) / declared
 
     @property
     def effective_rate(self) -> float:
@@ -104,13 +108,14 @@ class CashbackResult:
     def categorized_share(self) -> float:
         """Fraction of spend that was confidently mapped to a catalog category.
 
-        This is the metric that matters for the data-sale side of the
-        business — uncategorised spend is paid out but worth less.
+        Based on `line_sum` (the unscaled raw line totals), not the
+        possibly-corrected `total_spend`. Otherwise a correction would
+        silently change the categorisation quality reported to buyers.
         """
-        if not self.total_spend:
+        if not self.line_sum:
             return 0.0
         cat_spend = sum(ln.line_total for ln in self.lines if ln.categorized)
-        return cat_spend / self.total_spend
+        return cat_spend / self.line_sum
 
 
 class CashbackEngine:
@@ -123,20 +128,58 @@ class CashbackEngine:
           strategy's base rate, they are just labelled "uncategorized";
         * lines without a `line_total` (LLM could not read a price)
           contribute nothing — we do not invent prices.
+
+    **Total-drift guard:** if the receipt-level `declared_total` is
+    given and disagrees with the sum of line totals by more than
+    `drift_tolerance` (default 10%), we trust the declared total and
+    scale cashback to match. Without this, an LLM that duplicates an
+    item or counts the subtotal as a line item silently makes us
+    over-pay — see day-10.5 rehearsal incident on CORD train[0]
+    (line_sum = 2.72M IDR vs grand total 1.59M IDR, ~70% over).
+    Documented as a real case in `docs/04_ethics.md`.
     """
 
-    def __init__(self, strategy: CashbackStrategy | None = None) -> None:
+    def __init__(
+        self,
+        strategy: CashbackStrategy | None = None,
+        drift_tolerance: float = 0.10,
+    ) -> None:
         self.strategy = strategy or FlatStrategy()
+        self.drift_tolerance = drift_tolerance
 
-    def compute(self, matched: list[MatchedLineItem]) -> CashbackResult:
-        lines: list[LineCashback] = []
-        total_spend = 0.0
-        total_cashback = 0.0
-
+    def compute(
+        self,
+        matched: list[MatchedLineItem],
+        declared_total: float | None = None,
+    ) -> CashbackResult:
+        # First pass: per-line numbers at the raw line totals.
+        line_records: list[tuple[MatchedLineItem, float, float]] = []
+        line_sum = 0.0
         for m in matched:
             price = m.line_total or 0.0
             rate = self.strategy.rate_for(m) if price > 0 else 0.0
-            cashback = price * rate
+            line_records.append((m, price, rate))
+            line_sum += price
+
+        # Drift guard: if declared_total is present and the line sum
+        # disagrees by more than the tolerance, scale cashback so the
+        # effective spend is the declared total. We do NOT rewrite each
+        # line's printed total — the user can still inspect the raw
+        # extraction — we only correct the *aggregate* cashback.
+        drift_pct: float | None = None
+        total_was_corrected = False
+        scale = 1.0
+        if declared_total and declared_total > 0 and line_sum > 0:
+            drift_pct = (line_sum - declared_total) / declared_total
+            if abs(drift_pct) > self.drift_tolerance:
+                scale = declared_total / line_sum
+                total_was_corrected = True
+
+        # Second pass: write LineCashback rows with the (possibly scaled) cashback.
+        lines: list[LineCashback] = []
+        total_cashback = 0.0
+        for m, price, rate in line_records:
+            cashback = price * rate * scale
             category = m.match.category if m.accepted else "uncategorized"
             sku = m.match.sku if m.accepted else "—"
 
@@ -149,12 +192,17 @@ class CashbackEngine:
                 cashback=cashback,
                 categorized=m.accepted,
             ))
-            total_spend += price
             total_cashback += cashback
+
+        total_spend = declared_total if total_was_corrected else line_sum
 
         return CashbackResult(
             lines=lines,
             total_spend=total_spend,
             total_cashback=total_cashback,
             strategy=self.strategy.name,
+            line_sum=line_sum,
+            declared_total=declared_total,
+            total_was_corrected=total_was_corrected,
+            drift_pct=drift_pct,
         )
