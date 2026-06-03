@@ -23,7 +23,10 @@ sign in to HF on the user's behalf without the user pasting a token.
    - **Owner:** your HF username
    - **Space name:** `receipt-to-cashback`
    - **License:** MIT
-   - **SDK:** Streamlit
+   - **SDK:** **Docker** (HF Spaces removed the Streamlit SDK in
+     2025; Streamlit apps now ship inside a Docker container — our
+     repo has a `Dockerfile` at root that the platform builds)
+   - **Docker template:** Blank (we ship our own Dockerfile)
    - **Hardware:** CPU basic (free)
    - **Visibility:** Public
 2. Add the Gemini API key as a **Repository secret** (Settings →
