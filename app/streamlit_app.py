@@ -336,6 +336,24 @@ def page_b2b() -> None:
         st.dataframe(users, use_container_width=True)
 
 
+def page_ethics() -> None:
+    st.title("Ethics")
+    st.caption(
+        "Under the market-research business model this is the central "
+        "section of the project. The full document is in "
+        "[`docs/04_ethics.md`](https://github.com/alexgl77/receipt-to-cashback/blob/main/docs/04_ethics.md)."
+    )
+    ethics_path = ROOT / "docs" / "04_ethics.md"
+    if not ethics_path.exists():
+        st.warning("Ethics document not found in this deployment.")
+        return
+    body = ethics_path.read_text(encoding="utf-8")
+    # Hide the H1 because Streamlit's st.title already shows one
+    if body.startswith("# Ethics"):
+        body = body.split("\n", 1)[1]
+    st.markdown(body)
+
+
 def page_about() -> None:
     st.title("About this project")
     st.markdown(
@@ -397,12 +415,14 @@ def main() -> None:
     )
     page = st.sidebar.radio(
         "Navigation",
-        ["Upload Receipt", "B2B Analytics", "About this project"],
+        ["Upload Receipt", "B2B Analytics", "Ethics", "About this project"],
     )
     if page == "Upload Receipt":
         page_upload()
     elif page == "B2B Analytics":
         page_b2b()
+    elif page == "Ethics":
+        page_ethics()
     else:
         page_about()
 

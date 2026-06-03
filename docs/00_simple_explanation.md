@@ -472,9 +472,53 @@ CORD-v2 tiene boletas pero no asocia receipts a usuarios — no podemos hacer an
 
 ---
 
-## Día 8 — _(pendiente)_
+## Día 8 — Deploy + README final + Ética visible en la app
 
-_Por escribirse después del deploy + README final + sección ética en la app._
+### Qué hicimos
+Tres cosas, todas no-técnicas en términos de funcionalidad pero **críticas para que esto sea un proyecto presentable**:
+
+1. **Decidimos el lugar de deploy** y dejamos el código compatible con esa plataforma.
+2. **Reescribimos el README final** estilo template del bootcamp, con todo lo que un evaluador (Yossi, el jurado, un futuro empleador) necesita ver en 30 segundos.
+3. **Hicimos la página de Ética visible dentro de la app** así el demo viewer la ve sin tener que abrir GitHub.
+
+### Por qué Hugging Face Spaces y no Streamlit Cloud
+Medimos el stack: torch + easyocr + sentence-transformers multilingüe + FAISS = pico de ~2-3 GB de RAM en runtime. **Streamlit Community Cloud tiene un techo de 1 GB** → la app se caería con OOM en producción. **HF Spaces (CPU basic free)** da 16 GB de RAM y 50 GB de disco, soporta Streamlit nativamente, lee secrets como `GEMINI_API_KEY` desde Repository Secrets sin que aparezcan en logs. Decisión obvia.
+
+### Cómo dejamos el código deploy-ready
+- **`app.py` en la raíz** — wrapper de 3 líneas que importa `app/streamlit_app.py`. HF Spaces espera un `app.py` en root, pero queríamos mantener nuestra estructura modular.
+- **Frontmatter YAML en `README.md`** — HF Spaces lee las primeras líneas del README para saber qué SDK usar (`sdk: streamlit`), qué app file ejecutar (`app_file: app.py`), qué colores poner en la card del Space. Sin frontmatter no se deploya.
+- **`docs/07_deploy_guide.md`** — instrucciones paso a paso para deployar. Los pasos que requieren la cuenta HF del usuario (crear Space, agregar el `GEMINI_API_KEY` como secret, `git push hf main`) están documentados ahí porque yo no puedo hacerlos por él.
+
+### Página de Ética dentro de la app
+Antes la ética vivía solo en `docs/04_ethics.md`, que el jurado podría no abrir. Ahora hay una pestaña "Ethics" en la sidebar de Streamlit que **renderiza ese mismo markdown** adentro de la app. Un solo source-of-truth, dos vistas: GitHub para el código + repo, app deployada para el demo en vivo. Cuando se actualice la ética, se actualiza automáticamente en ambos lugares.
+
+### El README final
+Reescrito desde cero. Incluye:
+- Frontmatter HF Spaces (que también sirve como metadata GitHub-friendly)
+- Tagline de una línea sobre el modelo de negocio
+- **Tabla que mapea cada requisito del brief a dónde se cumple** (le ahorra al evaluador 30 minutos de búsqueda)
+- Pipeline en ASCII art (entendible sin abrir código)
+- Tech stack con la semana del bootcamp de cada herramienta
+- Cómo correr local + cómo correr los tests
+- Estructura del repo
+- Link a la bitácora simple (este doc)
+- Link a la ética
+- Agradecimientos (Yossi explícito por su feedback "spine first, garnish after")
+- License (MIT)
+
+También creamos `LICENSE` con el texto MIT estándar.
+
+### De qué semana del bootcamp viene
+Esta no es de una semana técnica del bootcamp — es **higiene de proyecto profesional**: documentación clara, deploy reproducible, atribución correcta. Lo que separa un capstone "que funciona" de uno "que se puede mostrar a un reclutador".
+
+### Lo que falta para el día del demo
+- **Que Alex haga el deploy en HF Spaces** (yo no puedo, requiere su cuenta — pasos en `docs/07_deploy_guide.md`, ~5 minutos de clicks)
+- **PPT con template del bootcamp** (día 9)
+- **Video Loom de 3 minutos** (día 9)
+- **Submission en la plataforma del bootcamp** (día 10)
+
+### Branch usada
+`feat/deploy-and-polish` → merged a `main` con todo el contenido del día 8.
 
 ---
 
