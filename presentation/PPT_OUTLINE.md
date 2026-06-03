@@ -130,27 +130,37 @@ photo  →  EasyOCR  →  Gemini 2.5 Flash Lite (JSON, Pydantic)
 
 ## Slide 6 — Honest challenges (and what we did)
 
-**Visible on slide (3 mini-panels):**
+**Visible on slide (4 mini-panels):**
 
 | Problem found mid-build | What we did |
 |---|---|
 | Original business model (partner-rebate) rejected legitimate items | **Pivoted** to market-research model: every priced line earns cashback, catalog becomes a classifier |
 | English-only embedding rejected Indonesian item "PKT AYAM" | **Swapped** for `paraphrase-multilingual-MiniLM-L12-v2` |
 | End-to-end latency was 40+ s on the first run | **Switched** to Gemini Flash Lite + cached OCR/LLM by image hash → 8 s |
+| **Rehearsal day:** LLM double-counted items with quantities, inflating spend 70 % on CORD train[0] (sum=2.72M vs total=1.59M IDR) | **Total-drift guard:** engine compares line sum to declared total; if |drift| > 10 % it scales cashback to the declared total and surfaces a yellow warning. **Exactly the failure the ethics doc predicts.** |
 
-**Speaker (40 s):**
+**Speaker (50 s):**
 
-> "Three problems we caught during the build, not the demo. First,
-> the original business model — partner-rebate — gated cashback to
-> items we had agreements for, which meant most real receipts came
-> back empty. We pivoted to market-research, where we pay the user
-> for the data itself. Every priced line now earns cashback.
+> "Four problems we caught during the build. First, the original
+> business model — partner-rebate — gated cashback to items we had
+> agreements for, which meant most real receipts came back empty.
+> Pivoted to market-research; every priced line now earns cashback.
 >
-> Second, the English-only embedding model rejected Indonesian items.
-> We swapped to a multilingual model and it classifies correctly.
+> Second, English-only embedding rejected Indonesian items. Swapped
+> to a multilingual model.
 >
-> Third, latency was 40-plus seconds. Switching the LLM to Flash Lite
-> and caching by image hash brought it down to 8."
+> Third, latency was 40-plus seconds. Flash Lite + image-hash cache
+> brought it to 8.
+>
+> Fourth — and this one caught us at rehearsal — on a receipt with
+> quantities like '3 x Bbk Panggang', the LLM double-counted items
+> and inflated the spend by 70 percent. At 2 percent cashback that's
+> real money out the door. We added a total-drift guard: the engine
+> compares the line sum against the receipt's grand total, and if
+> they disagree by more than 10 percent it trusts the grand total
+> and surfaces a yellow warning. This is exactly the failure mode
+> the ethics doc predicts — we wrote the doc *before* it happened,
+> and the doc told us what to build."
 
 ---
 

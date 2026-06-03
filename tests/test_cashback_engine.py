@@ -84,6 +84,45 @@ class TestFlatStrategy(unittest.TestCase):
         self.assertAlmostEqual(result.categorized_share, 10 / 15)
 
 
+class TestTotalDriftGuard(unittest.TestCase):
+    """Day-10.5 fix: the LLM sometimes double-counts items, inflating
+    line_sum vs the declared grand total. Engine must trust the
+    declared total when drift > tolerance."""
+
+    def test_no_drift_no_correction(self):
+        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10)
+        matched = [_matched("A", 10.0, "X"), _matched("B", 20.0, "Y")]
+        result = engine.compute(matched, declared_total=30.0)
+        self.assertFalse(result.total_was_corrected)
+        self.assertEqual(result.total_spend, 30.0)
+        self.assertAlmostEqual(result.total_cashback, 0.60)
+
+    def test_small_drift_under_tolerance_no_correction(self):
+        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10)
+        matched = [_matched("A", 10.0, "X"), _matched("B", 20.0, "Y")]
+        # line_sum=30, declared=32 -> 6% drift, under 10% tolerance
+        result = engine.compute(matched, declared_total=32.0)
+        self.assertFalse(result.total_was_corrected)
+        self.assertEqual(result.total_spend, 30.0)
+
+    def test_large_drift_triggers_correction(self):
+        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10)
+        matched = [_matched("A", 100.0, "X")]
+        # line_sum=100, declared=60 -> +66% drift over → correct to 60
+        result = engine.compute(matched, declared_total=60.0)
+        self.assertTrue(result.total_was_corrected)
+        self.assertAlmostEqual(result.total_spend, 60.0)
+        # Cashback scaled: 100 * 0.02 * (60/100) = 1.20
+        self.assertAlmostEqual(result.total_cashback, 1.20)
+
+    def test_no_declared_total_no_correction(self):
+        engine = CashbackEngine(FlatStrategy(0.02))
+        matched = [_matched("A", 10.0, "X")]
+        result = engine.compute(matched, declared_total=None)
+        self.assertFalse(result.total_was_corrected)
+        self.assertIsNone(result.drift_pct)
+
+
 class TestTieredStrategy(unittest.TestCase):
     def test_food_and_beverage_get_their_tier_rate(self):
         engine = CashbackEngine(TieredStrategy())

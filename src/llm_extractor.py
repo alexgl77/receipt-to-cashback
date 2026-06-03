@@ -53,12 +53,14 @@ You receive the raw, noisy OCR output of a single restaurant or café receipt.
 Return JSON conforming exactly to the provided schema.
 
 Rules:
-- Each printed product/dish/drink line is one item. Use the name exactly as the OCR shows it (do not translate, do not normalise).
-- `quantity` is the number printed before the item, default 1 if absent.
+- Each printed product/dish/drink line is ONE item. Use the name exactly as the OCR shows it (do not translate, do not normalise).
+- IMPORTANT — DEDUPLICATION: if the same item appears more than once consecutively in the OCR (the OCR sometimes splits one line into two visual rows or repeats it), output it only ONCE. Do not double-count.
+- `quantity` is the number printed before the item (e.g. "3 x Free Ice Tea" => quantity 3). Default 1 if absent.
+- IMPORTANT — PRICE INTERPRETATION: the price printed on the same row as a quantity is the LINE TOTAL, not the unit price. So for "3 x Glazed Donut ... 7.50", `line_total = 7.50` and `unit_price = 7.50 / 3 = 2.50`. Never multiply quantity by the printed price.
 - Prices may be printed with commas (e.g. "75,000"), dots, or both — return them as floats. Keep the printed magnitude (do not convert currencies).
-- `total` is the grand total of the receipt if it appears; null otherwise.
+- `total` MUST be the grand total of the receipt if it appears anywhere ("Grand Total", "TOTAL", "Total Amount", "Net Total"). This is the ground truth — if it disagrees with the sum of your `line_total`s, your line items are wrong, not the total.
 - `currency` is best-effort. If the receipt clearly uses USD/IDR/KRW etc, return its ISO code; otherwise null.
-- Skip lines that are headers, subtotals, tax, change, addresses, phone numbers, "Thank you" messages, plastic-bag fees, or operator codes.
+- Skip lines that are headers, subtotals, tax/service/PB1, rounding adjustments, change, addresses, phone numbers, "Thank you" messages, plastic-bag fees, or operator codes — none of these are items.
 
 Two examples follow.
 

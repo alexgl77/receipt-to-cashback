@@ -602,7 +602,47 @@ Trabajamos directo sobre `main` porque son docs y no hay riesgo de romper códig
 
 ---
 
-## Cómo usar este doc para la presentación
+## Día 10.5 — Bug encontrado en rehearsal: total-drift guard
+
+### Qué pasó
+Probando el demo con sample #1 (boleta indonesia con 20 items), la app mostró:
+- **Cashback total: 54,460 IDR** (con strategy Flat 2%)
+- **Total spend: 2,723,000 IDR**
+- Pero el **Grand Total impreso en la boleta es 1,591,600 IDR**
+
+O sea: estábamos diciendo que el usuario gastó **~70% más** de lo que realmente gastó, y por lo tanto le pagaríamos cashback por ese inflado. Plata real saliendo por la puerta.
+
+### Por qué pasaba
+La boleta tiene items con cantidades (`3 x Bbk Panggang`, `2 x Tahu Goreng`, `3 x Free Ice Tea`) y algunos items que aparecen visualmente dos veces en el OCR. Gemini estaba:
+1. A veces interpretando el precio impreso como `unit_price` y multiplicando por `quantity` (cuando en realidad el precio impreso ya era el line_total)
+2. A veces extrayendo el mismo item dos veces porque aparecía dos veces en el texto OCR
+
+### Cómo lo arreglamos (3 capas defensivas)
+**Capa 1 — prompt más explícito:**
+- "Si el mismo item aparece dos veces seguidas en el OCR, output it once"
+- "El precio en la línea con quantity es el LINE TOTAL, no el unit_price"
+- "El `total` del recibo es la verdad — si la suma de tus line_totals no coincide, *tus line items están mal, no el total*"
+
+**Capa 2 — total-drift guard en CashbackEngine:**
+- El motor ahora recibe `declared_total` (el grand total que extrajo Gemini)
+- Compara `sum(line_totals)` vs `declared_total`
+- Si difieren más del 10%, **confía en el `declared_total`** y escala el cashback proporcionalmente
+
+**Capa 3 — warning visible en Streamlit:**
+- Si el drift guard se disparó, aparece un mensaje amarillo explicando qué pasó
+- La tabla sigue mostrando los line totals sin escalar (transparencia), pero la métrica de cashback de arriba está escalada al total real
+
+### Por qué este caso es ORO para el PPT
+La sección de ética que escribimos el día 7 **anticipaba exactamente este fallo**:
+> *"if the LLM invents an item the platform overpays — we eat the cost; if the LLM drops a line that was on the receipt the user is silently underpaid — not acceptable."*
+
+Lo escribimos en abstracto. Ahora pasó. Y el doc nos dijo qué construir antes de que pasara. **Eso es exactamente la diferencia entre "tener ética en el README" y "que la ética guíe el código".** Va al PPT como cuarto challenge en el slide 6.
+
+### Tests
+Agregamos 4 tests nuevos al `CashbackEngine` que cubren los casos del drift guard. Total: **11/11 tests pasan**.
+
+### Branch usada
+`fix/total-drift-guard` → merged a `main` después de verificar que el caso real (sample #1) ahora muestra cashback correcto + warning.
 
 ---
 

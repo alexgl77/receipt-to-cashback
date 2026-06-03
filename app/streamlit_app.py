@@ -114,7 +114,7 @@ def run_spine(image: Image.Image, strategy_label: str) -> tuple[
     matched = match_extraction(extraction, index)
 
     progress.progress(95, text="Computing cashback…")
-    result = engine.compute(matched)
+    result = engine.compute(matched, declared_total=extraction.total)
     progress.progress(100, text="Done.")
     progress.empty()
 
@@ -206,6 +206,17 @@ def page_upload() -> None:
             + (f"  ·  Merchant: {extraction.merchant}" if extraction.merchant else "")
             + (f"  ·  Date: {extraction.date}" if extraction.date else "")
         )
+        if result.total_was_corrected:
+            st.warning(
+                f"**Total-drift guard fired.** The sum of line totals "
+                f"({result.line_sum:,.0f} {extraction.currency or ''}) "
+                f"disagrees with the receipt's declared grand total "
+                f"({result.declared_total:,.0f} {extraction.currency or ''}) "
+                f"by {result.drift_pct:+.0%}. To avoid over-paying we "
+                f"trust the declared total. The line table below shows "
+                f"the unscaled per-line numbers; the cashback metric "
+                f"above is scaled to match the grand total."
+            )
 
         st.markdown("**Line-by-line breakdown**")
         st.dataframe(
