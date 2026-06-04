@@ -30,7 +30,7 @@ Vas a poner el PPT en pantalla completa y avanzar slide por slide. En el slide 5
 
 ## El PPT — qué decir slide por slide
 
-8 slides. Después de cada título te pongo **lo que tenés que decir** literal. Vos lo decís con tus palabras, pero el contenido es ese.
+**7 slides** (alineado 1:1 con las 5 secciones que pide el brief). Hay un `.pptx` ya generado en `presentation/Receipt-to-Cashback.pptx` que podés subir a Google Slides directamente — abajo va lo que tenés que decir slide por slide. Vos lo decís con tus palabras, pero el contenido es ese.
 
 ### Slide 1 — Portada (15 segundos)
 
@@ -41,16 +41,16 @@ Vas a poner el PPT en pantalla completa y avanzar slide por slide. En el slide 5
 
 ---
 
-### Slide 2 — El problema (30 segundos)
+### Slide 2 — Project Overview (35 segundos)
 
-**Mostrás:** un texto corto del problema y a quién apunta.
+**Mostrás:** dos columnas — "El problema" a la izquierda y "Qué construimos" a la derecha (target users incluido en la columna derecha).
 
 **Decís:**
-> "Hoy las firmas de investigación de mercado pagan millones por paneles de consumo, pero esos paneles son lentos y auto-reportados. Las tarjetas de fidelidad ven un solo retailer. Nadie tiene la foto **cruzada y por item** de lo que la gente realmente compra. Nosotros la conseguimos pagándole al consumidor directamente por la foto de cualquier boleta. Cashback flat, sin acuerdos con marcas, anonimizado y vendido en agregado."
+> "Hoy la investigación de mercado compra encuestas auto-reportadas o paneles que tardan meses en armarse. Los programas de fidelidad ven solo un retailer a la vez. Nadie tiene la foto **cruzada y por item** de lo que la gente realmente compra. Nosotros la conseguimos pagándole al consumidor directamente por la foto de cualquier boleta. El cashback es el precio del dato; el valor es vender la foto de consumo en agregado a marcas, retailers y consultoras."
 
 ---
 
-### Slide 3 — El pipeline (45 segundos)
+### Slide 3 — Solution & Pipeline (45 segundos)
 
 **Mostrás:** el diagrama con 5 flechas: foto → OCR → Gemini → FAISS → CashbackEngine → app.
 
@@ -88,21 +88,12 @@ Vas a poner el PPT en pantalla completa y avanzar slide por slide. En el slide 5
 
 ---
 
-### Slide 7 — Ética (40 segundos)
+### Slide 7 — Future Steps & Thanks (20 segundos)
 
-**Mostrás:** los nombres de las 7 secciones del doc de ética.
-
-**Decís:**
-> "Bajo el modelo de market-research, ética es el proyecto, no una nota al pie. El doc cubre consentimiento, riesgo de privacidad — boletas de farmacia, alcohol, geo + hora son tracking primitives disfrazadas —, sesgo del OCR contra scripts no-latinos, alucinaciones del LLM, combinaciones tóxicas de categorías como 'fórmula de bebé más alcohol', y k-anonimato como piso antes de vender. El doc vive en el repo **y** como pestaña dentro de la app."
-
----
-
-### Slide 8 — Future + thanks (20 segundos)
-
-**Mostrás:** "What's next" + lista de agradecimientos.
+**Mostrás:** dos columnas — "Two more weeks" (lo que vendría después) y "Thanks" (Yossi explícito, cohorte, Naver Clova, Google, Hugging Face).
 
 **Decís:**
-> "Si tuviéramos dos semanas más: usuarios reales en vez de sintéticos, warehouse en Postgres, paso de redacción sobre la imagen cruda, k-anonimato en el momento de venta, y el agente MCP que no entró por tiempo. Gracias a Yossi, a la cohorte y a Naver Clova por liberar CORD. Listo para preguntas."
+> "Si tuviéramos dos semanas más: usuarios reales en vez de sintéticos, warehouse en Postgres, paso de redacción sobre la imagen cruda, k-anonimato en el momento de venta, y el agente MCP que no entró por tiempo. La discusión completa de ética — privacidad, consentimiento, sesgo del OCR, hallucination — vive en `docs/04_ethics.md` y como pestaña dentro de la app. Gracias a Yossi por el feedback 'spine first, garnish after', a la cohorte y a Naver Clova por liberar CORD. Listo para preguntas."
 
 ---
 
