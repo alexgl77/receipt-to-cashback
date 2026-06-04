@@ -105,15 +105,18 @@ class TestTotalDriftGuard(unittest.TestCase):
         self.assertFalse(result.total_was_corrected)
         self.assertEqual(result.total_spend, 30.0)
 
-    def test_large_drift_triggers_correction(self):
-        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10)
+    def test_moderate_drift_triggers_correction(self):
+        """Between 10% (tolerance) and 50% (extreme) — scale to declared."""
+        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10,
+                                extreme_drift_threshold=0.50)
         matched = [_matched("A", 100.0, "X")]
-        # line_sum=100, declared=60 -> +66% drift over → correct to 60
-        result = engine.compute(matched, declared_total=60.0)
+        # line_sum=100, declared=80 -> +25% drift, between 10% and 50%
+        result = engine.compute(matched, declared_total=80.0)
         self.assertTrue(result.total_was_corrected)
-        self.assertAlmostEqual(result.total_spend, 60.0)
-        # Cashback scaled: 100 * 0.02 * (60/100) = 1.20
-        self.assertAlmostEqual(result.total_cashback, 1.20)
+        self.assertFalse(result.requires_review)
+        self.assertAlmostEqual(result.total_spend, 80.0)
+        # Cashback scaled: 100 * 0.02 * (80/100) = 1.60
+        self.assertAlmostEqual(result.total_cashback, 1.60)
 
     def test_no_declared_total_no_correction(self):
         engine = CashbackEngine(FlatStrategy(0.02))
@@ -121,6 +124,32 @@ class TestTotalDriftGuard(unittest.TestCase):
         result = engine.compute(matched, declared_total=None)
         self.assertFalse(result.total_was_corrected)
         self.assertIsNone(result.drift_pct)
+
+    def test_extreme_drift_refuses_cashback(self):
+        """Day-10.6 case: LLM dropped the leading million when reading
+        '1,591,600' and returned 591_600. line_sum is also inflated
+        by duplicates. Neither number is trustworthy → refuse payment."""
+        engine = CashbackEngine(
+            FlatStrategy(0.02),
+            drift_tolerance=0.10,
+            extreme_drift_threshold=0.50,
+        )
+        matched = [_matched("Bbk", 2_619_000.0, "FOOD026")]
+        result = engine.compute(matched, declared_total=591_600.0)
+        self.assertTrue(result.requires_review)
+        self.assertFalse(result.total_was_corrected)
+        self.assertEqual(result.total_cashback, 0.0)
+        self.assertEqual(result.total_spend, 0.0)
+
+    def test_negative_extreme_drift_also_refuses(self):
+        """Sum much *smaller* than declared (LLM dropped lines) also
+        triggers refusal — we shouldn't silently underpay either."""
+        engine = CashbackEngine(FlatStrategy(0.02))
+        matched = [_matched("A", 10.0, "X")]
+        result = engine.compute(matched, declared_total=100.0)
+        # drift = (10 - 100) / 100 = -90% → extreme
+        self.assertTrue(result.requires_review)
+        self.assertEqual(result.total_cashback, 0.0)
 
 
 class TestTieredStrategy(unittest.TestCase):

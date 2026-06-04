@@ -92,13 +92,14 @@ class LineCashback:
 @dataclass
 class CashbackResult:
     lines: list[LineCashback]
-    total_spend: float            # what we actually pay cashback on
-    total_cashback: float
+    total_spend: float            # what we actually pay cashback on (0 if requires_review)
+    total_cashback: float         # 0 if requires_review
     strategy: str
     line_sum: float               # raw sum of line_totals (may differ from total_spend if total_was_corrected)
     declared_total: float | None  # the grand total the LLM extracted from the receipt
-    total_was_corrected: bool     # True if we trusted declared_total over line_sum due to >10% drift
+    total_was_corrected: bool     # True if we trusted declared_total over line_sum due to >drift_tolerance
     drift_pct: float | None       # signed (line_sum - declared) / declared
+    requires_review: bool = False  # True if drift exceeds extreme threshold; cashback is suppressed
 
     @property
     def effective_rate(self) -> float:
@@ -129,23 +130,32 @@ class CashbackEngine:
         * lines without a `line_total` (LLM could not read a price)
           contribute nothing — we do not invent prices.
 
-    **Total-drift guard:** if the receipt-level `declared_total` is
-    given and disagrees with the sum of line totals by more than
-    `drift_tolerance` (default 10%), we trust the declared total and
-    scale cashback to match. Without this, an LLM that duplicates an
-    item or counts the subtotal as a line item silently makes us
-    over-pay — see day-10.5 rehearsal incident on CORD train[0]
-    (line_sum = 2.72M IDR vs grand total 1.59M IDR, ~70% over).
-    Documented as a real case in `docs/04_ethics.md`.
+    **Total-drift guard (two-tiered):**
+
+    * If `|line_sum − declared| / declared` is between
+      `drift_tolerance` (default 10 %) and `extreme_drift_threshold`
+      (default 50 %), we trust the declared total and scale cashback
+      to match. Day-10.5 case: line_sum 2.72 M IDR vs declared 1.59 M
+      → trust the receipt's printed total.
+
+    * If the drift exceeds `extreme_drift_threshold`, we refuse to
+      pay any cashback and set `requires_review = True`. Day-10.6
+      case: line_sum 2.62 M IDR vs declared 591 K IDR (LLM dropped
+      the leading million when reading "1,591,600") — neither number
+      is trustworthy, paying either way under-pays or over-pays the
+      user. Refusing is the ethically correct call under the
+      market-research model.
     """
 
     def __init__(
         self,
         strategy: CashbackStrategy | None = None,
         drift_tolerance: float = 0.10,
+        extreme_drift_threshold: float = 0.50,
     ) -> None:
         self.strategy = strategy or FlatStrategy()
         self.drift_tolerance = drift_tolerance
+        self.extreme_drift_threshold = extreme_drift_threshold
 
     def compute(
         self,
@@ -161,17 +171,22 @@ class CashbackEngine:
             line_records.append((m, price, rate))
             line_sum += price
 
-        # Drift guard: if declared_total is present and the line sum
-        # disagrees by more than the tolerance, scale cashback so the
-        # effective spend is the declared total. We do NOT rewrite each
-        # line's printed total — the user can still inspect the raw
-        # extraction — we only correct the *aggregate* cashback.
+        # Two-tier drift guard. See class docstring for rationale.
         drift_pct: float | None = None
         total_was_corrected = False
+        requires_review = False
         scale = 1.0
         if declared_total and declared_total > 0 and line_sum > 0:
             drift_pct = (line_sum - declared_total) / declared_total
-            if abs(drift_pct) > self.drift_tolerance:
+            abs_drift = abs(drift_pct)
+            if abs_drift > self.extreme_drift_threshold:
+                # We can't trust either number — refuse payment, ask
+                # for review. Better an angry user re-uploading a
+                # clearer photo than an under-paid user we don't hear
+                # from again.
+                requires_review = True
+                scale = 0.0
+            elif abs_drift > self.drift_tolerance:
                 scale = declared_total / line_sum
                 total_was_corrected = True
 
@@ -194,7 +209,12 @@ class CashbackEngine:
             ))
             total_cashback += cashback
 
-        total_spend = declared_total if total_was_corrected else line_sum
+        if requires_review:
+            total_spend = 0.0
+        elif total_was_corrected:
+            total_spend = declared_total or line_sum
+        else:
+            total_spend = line_sum
 
         return CashbackResult(
             lines=lines,
@@ -205,4 +225,5 @@ class CashbackEngine:
             declared_total=declared_total,
             total_was_corrected=total_was_corrected,
             drift_pct=drift_pct,
+            requires_review=requires_review,
         )
