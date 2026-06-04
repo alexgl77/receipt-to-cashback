@@ -109,19 +109,32 @@ of ~2.72 M IDR against a declared Grand Total of ~1.59 M IDR — a
 70 % over-count. At 2 % cashback that's an extra ~22,000 IDR paid
 out per receipt.
 
-The fix shipped: `CashbackEngine` now takes the receipt's declared
-`total` and, when `|line_sum − declared| / declared > 10 %`, scales
-the cashback to match the declared total and surfaces a yellow
-warning in the UI. The line table still shows the unscaled
-extraction (so the user can see what we read), but the headline
-cashback is capped to the real total.
+The first fix shipped a **drift guard**: `CashbackEngine` takes the
+receipt's declared `total` and, when `|line_sum − declared| /
+declared > 10 %`, scales the cashback to match the declared total
+and surfaces a yellow warning in the UI.
 
-What we still do NOT detect: the *under-paying* variant where the
-LLM drops a line entirely. The same drift guard catches it
-*statistically* (sum will be lower than declared), but we currently
-treat it the same way — scale down — which underpays the user.
-The honest fix is to flag under-counts for human review instead of
-silently scaling, and we have not implemented that.
+**Update (day 10.6):** the *next* rehearsal exposed the inverse
+failure. The LLM dropped the leading million when reading
+"1,591,600" and returned a declared total of 591,600 IDR — while
+the line sum stayed at ~2.62 M IDR (still inflated by duplicates).
+The drift guard, trusting the declared total, silently
+**under-paid** the user by ~20,000 IDR. *This is the not-acceptable
+case the section above warns about.*
+
+The second fix splits the guard into two tiers:
+
+* **Moderate drift (10–50 %):** trust the declared total, scale
+  cashback, show a yellow warning. As before.
+* **Extreme drift (> 50 %):** refuse to pay any cashback. Surface
+  a red error explaining that the receipt is held for review.
+  Better an angry user re-uploading than a silently under-paid
+  one — and the data we collect on disputed receipts becomes a
+  training signal for the OCR/LLM pipeline.
+
+This is also the policy under which the platform can be **audited
+honestly**: a regulator can verify that no cashback is ever paid
+when our own validation says we don't know the right number.
 
 ---
 

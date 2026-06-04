@@ -206,7 +206,19 @@ def page_upload() -> None:
             + (f"  ·  Merchant: {extraction.merchant}" if extraction.merchant else "")
             + (f"  ·  Date: {extraction.date}" if extraction.date else "")
         )
-        if result.total_was_corrected:
+        if result.requires_review:
+            st.error(
+                f"**Receipt held for review — no cashback paid.** The "
+                f"sum of line totals ({result.line_sum:,.0f} "
+                f"{extraction.currency or ''}) disagrees with the "
+                f"declared grand total ({result.declared_total:,.0f} "
+                f"{extraction.currency or ''}) by "
+                f"{result.drift_pct:+.0%} — too wide to trust either "
+                f"value. We refuse to pay rather than risk under- or "
+                f"over-paying. Please re-upload a clearer photo, or "
+                f"contact support if the receipt is correct."
+            )
+        elif result.total_was_corrected:
             st.warning(
                 f"**Total-drift guard fired.** The sum of line totals "
                 f"({result.line_sum:,.0f} {extraction.currency or ''}) "
