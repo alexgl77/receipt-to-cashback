@@ -105,9 +105,21 @@ SLIDE_7_LINKS = [
 ]
 
 SLIDE_8_JOB = [
-    "CV: [REPLACE WITH YOUR CV URL — Drive / Dropbox / personal site]",
-    "LinkedIn: https://www.linkedin.com/in/alex-goldbaum/  (verify URL)",
+    "CV: [REPLACE WITH YOUR CV URL]",
+    "LinkedIn: https://www.linkedin.com/in/alex-goldbaum/",
 ]
+
+# Replacement headers for the two free text boxes on slide 5 (the
+# template ships them as "Difficulties you managed to overcome" and
+# "My next step ..." — keeping them looks like the template wasn't
+# customised, so we shorten them to clean section headers).
+SLIDE_5_HEADER_DIFFICULTIES = "Difficulties"
+SLIDE_5_HEADER_NEXT_STEPS = "Next steps (optional)"
+
+# Slide 6's header in the template is "SHOW THE 3minutes videos + SHOW
+# some part of the code" — that's a directive to the presenter, not a
+# slide title. Replace with a real section title.
+SLIDE_6_HEADER = "Demo · video + code"
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +211,17 @@ def replace_run_text(run, new_text):
     run.text = new_text
 
 
+def clear_text_frame(text_frame):
+    """Empty a text frame so it visually disappears, without removing the
+    shape itself (removing the shape would break the template's layout).
+    Used to wipe the template's 'Time of presentation : X min max'
+    placeholders and the 'IMPORTANT : ...' instructions, which are
+    directives to the presenter rather than slide content.
+    """
+    _clear_paragraphs(text_frame)
+    # leave one empty paragraph with no runs
+
+
 # ---------------------------------------------------------------------------
 # Edit
 # ---------------------------------------------------------------------------
@@ -222,36 +245,47 @@ for paragraph in tf.paragraphs:
             replace_run_text(run, YOUR_NAME)
 
 
-# Slide 2 — Project name (title + body + footer time)
+# Slide 2 — Project name (title + body)
 set_title(slides[1], 0, SLIDE_2_TITLE)
 fill_text_frame(slides[1].shapes[1].text_frame, SLIDE_2_BODY)
-# shape[2] is the "Time of presentation : 1 min max" footer — leave it.
+clear_text_frame(slides[1].shapes[2].text_frame)  # "Time of presentation"
 
 # Slide 3 — Stack
 set_title(slides[2], 0, SLIDE_3_TITLE)
 fill_text_frame(slides[2].shapes[1].text_frame, SLIDE_3_BODY, bullet=True)
+clear_text_frame(slides[2].shapes[2].text_frame)  # "Time of presentation"
 
 # Slide 4 — Features list
 set_title(slides[3], 0, SLIDE_4_TITLE)
 fill_text_frame(slides[3].shapes[1].text_frame, SLIDE_4_BODY, bullet=True)
+clear_text_frame(slides[3].shapes[2].text_frame)  # "Time of presentation"
 
 # Slide 5 — Difficulties + Next steps (two halves on same slide)
-# shape[0] = "Difficulties you managed to overcome" (textbox header)
+# shape[0] = textbox header for difficulties (replace with shorter "Difficulties")
 # shape[1] = body bullets for difficulties
-# shape[3] = "My next step ..." (textbox header)
+# shape[2] = "Time of presentation" (clear)
+# shape[3] = textbox header for next steps (replace with shorter "Next steps")
 # shape[4] = body bullets for next steps
+# shape[5] = "Time of presentation" (clear)
+set_title(slides[4], 0, SLIDE_5_HEADER_DIFFICULTIES)
 fill_text_frame(slides[4].shapes[1].text_frame, SLIDE_5_DIFFICULTIES, bullet=True)
+clear_text_frame(slides[4].shapes[2].text_frame)
+set_title(slides[4], 3, SLIDE_5_HEADER_NEXT_STEPS)
 fill_text_frame(slides[4].shapes[4].text_frame, SLIDE_5_NEXT_STEPS, bullet=True)
+clear_text_frame(slides[4].shapes[5].text_frame)
 
 # Slide 6 — Show video + code
-# shape[1] = "3min screen-video link ..."
-# Replace with the live URL + a placeholder for the Loom (still to record)
+# shape[0] = template directive "SHOW THE 3minutes videos + SHOW some part of the code" → replace
+# shape[1] = video link placeholder → fill
+# shape[2] = "Time of presentation" → clear
+# shape[3] = "IMPORTANT : your PPT + the video..." directive → clear
+set_title(slides[5], 0, SLIDE_6_HEADER)
 fill_text_frame(
     slides[5].shapes[1].text_frame,
     [SLIDE_6_VIDEO_LINK, SLIDE_6_VIDEO_LINK_2],
 )
-# shape[3] is the IMPORTANT-time note — leave it; it's a reminder to the
-# presenter and looks like part of the template's intent.
+clear_text_frame(slides[5].shapes[2].text_frame)
+clear_text_frame(slides[5].shapes[3].text_frame)
 
 # Slide 7 — Links (PSTB Team Only)
 set_title(slides[6], 0, "Links (For PSTB Team Only – Not for Presentation)")
