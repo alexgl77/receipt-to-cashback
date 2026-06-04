@@ -51,20 +51,19 @@ the progress bar.
 > with prices and a total, then FAISS will match each item against
 > our 110-SKU catalog using a multilingual sentence-transformer."
 
-**Wait for result.** When the metric appears with the **yellow
-warning banner**:
+**Wait for result.** When the metric appears with the **warning
+banner**:
 
-> "Two things to notice. First — the cashback metric on the right.
-> Second — that yellow warning. This is the **drift guard**. The
-> LLM extracted 20 line items that sum to about 2.7 million IDR,
-> but the receipt's printed grand total is 1.6 million. The engine
-> detects that the line sum disagrees by more than 10%, so it
-> trusts the printed total and scales the cashback down. This
-> prevents over-paying the user when the LLM double-counts.
->
-> If the disagreement were greater than 50%, the engine would refuse
-> to pay any cashback at all — the receipt would be held for review.
-> Two-tier defence."
+> "Two things to notice. First — the cashback amount on the right.
+> Second — that warning panel. Here's the idea: in any receipt,
+> the sum of the items should equal the printed total at the
+> bottom. But OCR and LLM aren't perfect — sometimes they
+> double-count items, sometimes they misread a digit on the total.
+> So we do a simple sanity check: we compare *sum of items*
+> against *printed total*. If they disagree by more than 10%,
+> we trust the printed total and scale the cashback down. If they
+> disagree by more than 50%, we refuse to pay and ask for another
+> photo. That's what just fired here."
 
 **Action:** scroll down to the line-by-line breakdown, then expand
 "Show Gemini extraction JSON".

@@ -80,9 +80,10 @@ SLIDE_5_DIFFICULTIES = [
     "paraphrase-multilingual-MiniLM-L12-v2 → 100% classification",
     "End-to-end latency was 40+ seconds on first run → moved to Gemini Flash "
     "Lite + image-hash cache → ~8 seconds",
-    "Rehearsal: LLM double-counted items (+70% inflation) and later "
-    "under-read totals (1,591,600 → 591,600) → built two-tier drift guard "
-    "that scales at 10% and refuses payment at 50%",
+    "OCR and LLM aren't perfect — they sometimes double-count items or "
+    "misread the total. Sanity check: if the sum of items disagrees with the "
+    "printed total by 10%, we trust the printed total; if by 50%, we refuse "
+    "the cashback and ask the user for another photo.",
 ]
 
 SLIDE_5_NEXT_STEPS = [
