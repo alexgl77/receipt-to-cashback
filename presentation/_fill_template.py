@@ -222,6 +222,18 @@ def clear_text_frame(text_frame):
     # leave one empty paragraph with no runs
 
 
+def remove_shape(shape):
+    """Remove a shape from its slide entirely.
+
+    Needed for the template's 'Time of presentation' placeholders:
+    just clearing the text isn't enough — Google Slides shows them
+    as 'Click to add a title' once they're empty placeholders, which
+    looks like the deck wasn't finished.
+    """
+    sp = shape._element
+    sp.getparent().remove(sp)
+
+
 # ---------------------------------------------------------------------------
 # Edit
 # ---------------------------------------------------------------------------
@@ -245,47 +257,56 @@ for paragraph in tf.paragraphs:
             replace_run_text(run, YOUR_NAME)
 
 
+# NOTE on slide-2/3/4: shape[2] is the "Time of presentation" placeholder.
+# Removing it (not just clearing) so Google Slides doesn't render
+# "Click to add a title" in its slot.
+
 # Slide 2 — Project name (title + body)
 set_title(slides[1], 0, SLIDE_2_TITLE)
 fill_text_frame(slides[1].shapes[1].text_frame, SLIDE_2_BODY)
-clear_text_frame(slides[1].shapes[2].text_frame)  # "Time of presentation"
+remove_shape(slides[1].shapes[2])
 
 # Slide 3 — Stack
 set_title(slides[2], 0, SLIDE_3_TITLE)
 fill_text_frame(slides[2].shapes[1].text_frame, SLIDE_3_BODY, bullet=True)
-clear_text_frame(slides[2].shapes[2].text_frame)  # "Time of presentation"
+remove_shape(slides[2].shapes[2])
 
 # Slide 4 — Features list
 set_title(slides[3], 0, SLIDE_4_TITLE)
 fill_text_frame(slides[3].shapes[1].text_frame, SLIDE_4_BODY, bullet=True)
-clear_text_frame(slides[3].shapes[2].text_frame)  # "Time of presentation"
+remove_shape(slides[3].shapes[2])
 
-# Slide 5 — Difficulties + Next steps (two halves on same slide)
-# shape[0] = textbox header for difficulties (replace with shorter "Difficulties")
-# shape[1] = body bullets for difficulties
-# shape[2] = "Time of presentation" (clear)
-# shape[3] = textbox header for next steps (replace with shorter "Next steps")
-# shape[4] = body bullets for next steps
-# shape[5] = "Time of presentation" (clear)
+# Slide 5 — Difficulties (top half) + Next steps (bottom half)
+# Verified positions (inches) in the template:
+#   shape[0] textbox "Difficulties..." header — top=0.20 (TOP HEADER)
+#   shape[4] placeholder bullets             — top=0.82 (TOP BODY)
+#   shape[2] placeholder "Time of pres."     — top=0.27 (junk, remove)
+#   shape[3] textbox "My next step..."       — top=2.91 (BOTTOM HEADER)
+#   shape[1] placeholder bullets             — top=3.64 (BOTTOM BODY)
+#   shape[5] placeholder "Time of pres."     — top=3.40 (junk, remove)
+# IMPORTANT: shapes are not in visual order; remove junk first, then
+# fill, otherwise indices shift while we work.
 set_title(slides[4], 0, SLIDE_5_HEADER_DIFFICULTIES)
-fill_text_frame(slides[4].shapes[1].text_frame, SLIDE_5_DIFFICULTIES, bullet=True)
-clear_text_frame(slides[4].shapes[2].text_frame)
+fill_text_frame(slides[4].shapes[4].text_frame, SLIDE_5_DIFFICULTIES, bullet=True)
 set_title(slides[4], 3, SLIDE_5_HEADER_NEXT_STEPS)
-fill_text_frame(slides[4].shapes[4].text_frame, SLIDE_5_NEXT_STEPS, bullet=True)
-clear_text_frame(slides[4].shapes[5].text_frame)
+fill_text_frame(slides[4].shapes[1].text_frame, SLIDE_5_NEXT_STEPS, bullet=True)
+# Remove junk placeholders AFTER filling (descending index so shifts don't bite)
+remove_shape(slides[4].shapes[5])
+remove_shape(slides[4].shapes[2])
 
 # Slide 6 — Show video + code
-# shape[0] = template directive "SHOW THE 3minutes videos + SHOW some part of the code" → replace
+# shape[0] = template directive title → replace
 # shape[1] = video link placeholder → fill
-# shape[2] = "Time of presentation" → clear
-# shape[3] = "IMPORTANT : your PPT + the video..." directive → clear
+# shape[2] = "Time of presentation" → remove
+# shape[3] = "IMPORTANT : your PPT + the video..." directive → remove
 set_title(slides[5], 0, SLIDE_6_HEADER)
 fill_text_frame(
     slides[5].shapes[1].text_frame,
     [SLIDE_6_VIDEO_LINK, SLIDE_6_VIDEO_LINK_2],
 )
-clear_text_frame(slides[5].shapes[2].text_frame)
-clear_text_frame(slides[5].shapes[3].text_frame)
+# Remove in descending index
+remove_shape(slides[5].shapes[3])
+remove_shape(slides[5].shapes[2])
 
 # Slide 7 — Links (PSTB Team Only)
 set_title(slides[6], 0, "Links (For PSTB Team Only – Not for Presentation)")
