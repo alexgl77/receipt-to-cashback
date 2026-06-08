@@ -37,24 +37,19 @@ from src.cashback_engine import (
     FlatStrategy,
     TieredStrategy,
 )
-from src.llm_extractor import LLMExtractionError, LLMExtractor, ReceiptExtraction
+from src.llm_extractor import LLMExtractionError, ReceiptExtraction
 from src.matcher import MatchedLineItem, match_extraction
-from src.ocr_pipeline import OCRPipeline
 from src.synthetic_users import ARCHETYPES, generate_users
 from src.vector_store import CatalogIndex
+from src.vision_extractor import VisionExtractor
 
 
 # ----- expensive resources loaded once per session -------------------------
 
 
-@st.cache_resource(show_spinner="Loading OCR model… (first time only)")
-def get_ocr() -> OCRPipeline:
-    return OCRPipeline()
-
-
-@st.cache_resource(show_spinner="Connecting to Gemini…")
-def get_llm() -> LLMExtractor:
-    return LLMExtractor()
+@st.cache_resource(show_spinner="Connecting to Gemini Vision…")
+def get_vision() -> VisionExtractor:
+    return VisionExtractor()
 
 
 @st.cache_resource(show_spinner="Embedding catalog into FAISS (multilingual)…")
@@ -82,43 +77,41 @@ STRATEGY_CHOICES = {
 
 
 @st.cache_data(show_spinner=False)
-def cached_ocr_text(image_bytes: bytes) -> str:
-    """Cache OCR by raw image bytes so repeated demo uploads are instant."""
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    return get_ocr().read_text(image)
-
-
-@st.cache_data(show_spinner=False)
-def cached_extraction(ocr_text: str) -> ReceiptExtraction:
-    return get_llm().extract(ocr_text)
+def cached_vision_extraction(image_bytes: bytes) -> ReceiptExtraction:
+    """Cache the Gemini Vision call by raw image bytes so repeated
+    demo uploads of the same receipt are instant (critical for the
+    demo recording: warm cache on the second pass)."""
+    return get_vision().extract(image_bytes)
 
 
 def run_spine(image: Image.Image, strategy_label: str) -> tuple[
-    str,
     ReceiptExtraction,
     list[MatchedLineItem],
     CashbackResult,
 ]:
+    """One Vision call replaces the old two-step OCR + LLM pipeline.
+
+    Gemini 2.5 Flash multimodal reads the image directly and returns
+    the structured extraction in one shot — no OCR/LLM information
+    boundary, no "591,600 vs 1,591,600" misread.
+    """
     index = get_index()
     engine = CashbackEngine(STRATEGY_CHOICES[strategy_label])
 
-    progress = st.progress(0, text="Running OCR…")
+    progress = st.progress(0, text="Sending receipt to Gemini Vision…")
     buf = BytesIO()
     image.save(buf, format="PNG")
-    ocr_text = cached_ocr_text(buf.getvalue())
+    extraction = cached_vision_extraction(buf.getvalue())
 
-    progress.progress(40, text="Asking Gemini to structure items…")
-    extraction = cached_extraction(ocr_text)
-
-    progress.progress(80, text="Matching items against catalog (FAISS)…")
+    progress.progress(70, text="Matching items against catalog (FAISS)…")
     matched = match_extraction(extraction, index)
 
-    progress.progress(95, text="Computing cashback…")
+    progress.progress(90, text="Computing cashback…")
     result = engine.compute(matched, declared_total=extraction.total)
     progress.progress(100, text="Done.")
     progress.empty()
 
-    return ocr_text, extraction, matched, result
+    return extraction, matched, result
 
 
 # ----- pages ----------------------------------------------------------------
@@ -182,7 +175,7 @@ def page_upload() -> None:
         st.image(image, caption="Receipt", use_container_width=True)
     with col_right:
         try:
-            ocr_text, extraction, matched, result = run_spine(image, strategy_label)
+            extraction, matched, result = run_spine(image, strategy_label)
         except LLMExtractionError as exc:
             st.error(
                 "We couldn't reliably structure this receipt. The OCR text "
@@ -252,9 +245,7 @@ def page_upload() -> None:
             "other side."
         )
 
-        with st.expander("Show raw OCR text"):
-            st.code(ocr_text)
-        with st.expander("Show Gemini extraction JSON"):
+        with st.expander("Show Gemini Vision extraction JSON"):
             st.json(extraction.model_dump())
 
 
