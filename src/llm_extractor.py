@@ -126,7 +126,11 @@ class LLMExtractor:
         api_key: str | None = None,
         config: ExtractorConfig | None = None,
     ) -> None:
-        key = api_key or os.environ.get("GEMINI_API_KEY")
+        key = (
+            api_key
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("gemini_api_key")
+        )
         if not key:
             raise RuntimeError(
                 "GEMINI_API_KEY is not set. Add it to .env or pass api_key= explicitly."

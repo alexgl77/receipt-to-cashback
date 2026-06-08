@@ -94,7 +94,14 @@ class VisionExtractor:
         api_key: str | None = None,
         config: VisionExtractorConfig | None = None,
     ) -> None:
-        key = api_key or os.environ.get("GEMINI_API_KEY")
+        # Accept GEMINI_API_KEY (convention) or gemini_api_key (HF Space
+        # secret name that someone could realistically set without
+        # knowing the Unix uppercase convention).
+        key = (
+            api_key
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("gemini_api_key")
+        )
         if not key:
             raise RuntimeError(
                 "GEMINI_API_KEY is not set. Add it to .env or pass api_key= explicitly."
