@@ -1,12 +1,9 @@
-"""Unit tests for the CashbackEngine under the market-research model.
+"""Unit tests for the CashbackEngine — pays on the grand total.
 
-Business model assumptions encoded in these tests:
-
-* every priced line earns cashback regardless of FAISS confidence;
-* `accepted=False` only changes the category label, not the payout
-  (except under TieredStrategy where the misc/uncategorised tier
-  earns the base rate);
-* lines without a price contribute nothing.
+After the day-12 design fix, the engine pays cashback on the receipt's
+**grand total** (what the user actually spent, including service +
+tax). Items are extracted for the data product, not to compute the
+payout. These tests pin that contract down.
 """
 
 from __future__ import annotations
@@ -17,6 +14,7 @@ from src.cashback_engine import (
     CashbackEngine,
     FlatStrategy,
     TieredStrategy,
+    HALLUCINATION_RATIO,
 )
 from src.llm_extractor import LineItem
 from src.matcher import MatchedLineItem
@@ -34,149 +32,100 @@ def _matched(name, line_total, sku, category="food", rate=0.05, score=0.9, accep
     )
 
 
-class TestFlatStrategy(unittest.TestCase):
-    def test_pays_flat_rate_on_every_line(self):
+class TestFlatStrategyOnGrandTotal(unittest.TestCase):
+    def test_pays_on_grand_total_when_declared(self):
+        """Items sum to 1346, grand total 1591 (service + tax + rounding).
+        Cashback at 2% should be on 1591, not on 1346."""
         engine = CashbackEngine(FlatStrategy(0.02))
         matched = [
-            _matched("Iced Tea",   10.0, "BEV003", "beverage"),
-            _matched("Margherita", 20.0, "FOOD011", "food"),
+            _matched("Item A", 1000.0, "X1", "food"),
+            _matched("Item B",  346.0, "X2", "beverage"),
         ]
-        result = engine.compute(matched)
-        self.assertAlmostEqual(result.total_spend, 30.0)
-        self.assertAlmostEqual(result.total_cashback, 0.60, places=5)
-        self.assertEqual(result.strategy, "flat_2pct")
-
-    def test_uncategorised_lines_still_earn_cashback(self):
-        """Core of the market-research model: data has value even when
-        the line doesn't classify, so the user still gets paid."""
-        engine = CashbackEngine(FlatStrategy(0.03))
-        matched = [
-            _matched("Iced Tea",   10.0, "BEV003", "beverage", accepted=True),
-            _matched("PKT AYAM",    5.0, "FOOD021", "food", accepted=False),
-        ]
-        result = engine.compute(matched)
-        # Both lines pay out at 3 %; one is "food", the other is "uncategorized"
-        self.assertAlmostEqual(result.total_spend, 15.0)
-        self.assertAlmostEqual(result.total_cashback, 0.45, places=5)
-        categories = [ln.category for ln in result.lines]
-        self.assertEqual(categories, ["beverage", "uncategorized"])
-
-    def test_missing_price_is_zero(self):
-        engine = CashbackEngine(FlatStrategy(0.02))
-        matched = [MatchedLineItem(
-            item=LineItem(name="No Price", quantity=1, unit_price=None, line_total=None),
-            match=Match(sku="X", name="X", category="food", subcategory="x",
-                        typical_price_usd=0, cashback_rate=0.05, score=0.9),
-            accepted=True,
-        )]
-        result = engine.compute(matched)
-        self.assertEqual(result.total_spend, 0.0)
-        self.assertEqual(result.total_cashback, 0.0)
-
-    def test_categorised_share(self):
-        engine = CashbackEngine(FlatStrategy(0.02))
-        matched = [
-            _matched("Iced Tea",   10.0, "BEV003", "beverage", accepted=True),
-            _matched("OP CODE",     5.0, "X",      "food",     accepted=False),
-        ]
-        result = engine.compute(matched)
-        # 10 of 15 spend is categorised
-        self.assertAlmostEqual(result.categorized_share, 10 / 15)
-
-
-class TestTotalDriftGuard(unittest.TestCase):
-    """Day-10.5 fix: the LLM sometimes double-counts items, inflating
-    line_sum vs the declared grand total. Engine must trust the
-    declared total when drift > tolerance."""
-
-    def test_no_drift_no_correction(self):
-        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10)
-        matched = [_matched("A", 10.0, "X"), _matched("B", 20.0, "Y")]
-        result = engine.compute(matched, declared_total=30.0)
-        self.assertFalse(result.total_was_corrected)
-        self.assertEqual(result.total_spend, 30.0)
-        self.assertAlmostEqual(result.total_cashback, 0.60)
-
-    def test_small_drift_under_tolerance_no_correction(self):
-        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10)
-        matched = [_matched("A", 10.0, "X"), _matched("B", 20.0, "Y")]
-        # line_sum=30, declared=32 -> 6% drift, under 10% tolerance
-        result = engine.compute(matched, declared_total=32.0)
-        self.assertFalse(result.total_was_corrected)
-        self.assertEqual(result.total_spend, 30.0)
-
-    def test_moderate_drift_triggers_correction(self):
-        """Between 10% (tolerance) and 50% (extreme) — scale to declared."""
-        engine = CashbackEngine(FlatStrategy(0.02), drift_tolerance=0.10,
-                                extreme_drift_threshold=0.50)
-        matched = [_matched("A", 100.0, "X")]
-        # line_sum=100, declared=80 -> +25% drift, between 10% and 50%
-        result = engine.compute(matched, declared_total=80.0)
-        self.assertTrue(result.total_was_corrected)
+        result = engine.compute(matched, declared_total=1591.0)
+        self.assertAlmostEqual(result.total_spend, 1591.0)
+        self.assertAlmostEqual(result.total_cashback, 1591.0 * 0.02, places=4)
+        self.assertEqual(result.line_sum, 1346.0)
         self.assertFalse(result.requires_review)
-        self.assertAlmostEqual(result.total_spend, 80.0)
-        # Cashback scaled: 100 * 0.02 * (80/100) = 1.60
-        self.assertAlmostEqual(result.total_cashback, 1.60)
 
-    def test_no_declared_total_no_correction(self):
+    def test_falls_back_to_line_sum_when_no_declared_total(self):
         engine = CashbackEngine(FlatStrategy(0.02))
-        matched = [_matched("A", 10.0, "X")]
+        matched = [_matched("Item", 100.0, "X")]
         result = engine.compute(matched, declared_total=None)
-        self.assertFalse(result.total_was_corrected)
-        self.assertIsNone(result.drift_pct)
+        self.assertAlmostEqual(result.total_spend, 100.0)
+        self.assertAlmostEqual(result.total_cashback, 2.0)
 
-    def test_extreme_drift_refuses_cashback(self):
-        """Day-10.6 case: LLM dropped the leading million when reading
-        '1,591,600' and returned 591_600. line_sum is also inflated
-        by duplicates. Neither number is trustworthy → refuse payment."""
-        engine = CashbackEngine(
-            FlatStrategy(0.02),
-            drift_tolerance=0.10,
-            extreme_drift_threshold=0.50,
-        )
-        matched = [_matched("Bbk", 2_619_000.0, "FOOD026")]
-        result = engine.compute(matched, declared_total=591_600.0)
-        self.assertTrue(result.requires_review)
-        self.assertFalse(result.total_was_corrected)
-        self.assertEqual(result.total_cashback, 0.0)
-        self.assertEqual(result.total_spend, 0.0)
-
-    def test_negative_extreme_drift_also_refuses(self):
-        """Sum much *smaller* than declared (LLM dropped lines) also
-        triggers refusal — we shouldn't silently underpay either."""
+    def test_no_items_no_total_means_review(self):
         engine = CashbackEngine(FlatStrategy(0.02))
-        matched = [_matched("A", 10.0, "X")]
-        result = engine.compute(matched, declared_total=100.0)
-        # drift = (10 - 100) / 100 = -90% → extreme
+        result = engine.compute([], declared_total=None)
         self.assertTrue(result.requires_review)
         self.assertEqual(result.total_cashback, 0.0)
 
+    def test_hallucination_ratio_triggers_review(self):
+        """If line_sum is more than 2× grand total, the LLM probably
+        duplicated items (or the grand total was misread). Refuse."""
+        engine = CashbackEngine(FlatStrategy(0.02))
+        matched = [_matched("Item", 2600.0, "X")]  # absurdly large
+        result = engine.compute(matched, declared_total=1000.0)
+        self.assertTrue(result.requires_review)
+        self.assertEqual(result.total_cashback, 0.0)
 
-class TestTieredStrategy(unittest.TestCase):
-    def test_food_and_beverage_get_their_tier_rate(self):
+    def test_within_ratio_does_not_review(self):
+        """line_sum 1.5× declared total → still within ratio, pay
+        normally on the declared total."""
+        engine = CashbackEngine(FlatStrategy(0.02))
+        matched = [_matched("Item", 1500.0, "X")]
+        result = engine.compute(matched, declared_total=1000.0)
+        self.assertFalse(result.requires_review)
+        self.assertAlmostEqual(result.total_cashback, 20.0)
+
+
+class TestTieredStrategyOnGrandTotal(unittest.TestCase):
+    def test_tiered_uses_line_weighted_average(self):
+        """Item food (rate 2.5%) for 60 + beverage (rate 2%) for 40.
+        Weighted line rate = (60*0.025 + 40*0.02) / 100 = 0.023.
+        Declared grand total = 110 (with tax). Cashback = 110 * 0.023 = 2.53."""
         engine = CashbackEngine(TieredStrategy())
         matched = [
-            _matched("Iced Tea",   10.0, "BEV003", "beverage"),   # 2.0%
-            _matched("Margherita", 20.0, "FOOD011", "food"),       # 2.5%
+            _matched("Pizza", 60.0, "FOOD1", "food"),
+            _matched("Coke",  40.0, "BEV1",  "beverage"),
         ]
-        result = engine.compute(matched)
-        # 10 * 0.02 + 20 * 0.025 = 0.20 + 0.50 = 0.70
-        self.assertAlmostEqual(result.total_cashback, 0.70, places=5)
+        result = engine.compute(matched, declared_total=110.0)
+        self.assertAlmostEqual(result.total_cashback, 110.0 * 0.023, places=4)
 
-    def test_misc_category_zeroes_out(self):
+    def test_misc_pulls_average_down(self):
         engine = CashbackEngine(TieredStrategy())
         matched = [
-            _matched("Plastic Bag",  1.0, "MISC001", "misc"),
-            _matched("Iced Tea",    10.0, "BEV003",  "beverage"),
+            _matched("Pizza",      80.0, "FOOD1", "food"),       # 2.5%
+            _matched("Bag",         5.0, "MISC1", "misc"),       # 0%
         ]
-        result = engine.compute(matched)
-        self.assertAlmostEqual(result.total_cashback, 0.20, places=5)
+        result = engine.compute(matched, declared_total=85.0)
+        # weighted rate = (80*0.025 + 5*0) / 85 = 0.0235
+        self.assertAlmostEqual(result.total_cashback, 85.0 * (80*0.025 + 5*0) / 85, places=4)
 
-    def test_uncategorised_gets_base_rate(self):
-        engine = CashbackEngine(TieredStrategy(base_rate=0.02))
-        matched = [_matched("AYAM", 10.0, "X", "food", accepted=False)]
-        result = engine.compute(matched)
-        self.assertAlmostEqual(result.total_cashback, 0.20, places=5)
+
+class TestPerLineView(unittest.TestCase):
+    def test_per_line_breakdown_uses_line_totals_not_scaled(self):
+        engine = CashbackEngine(FlatStrategy(0.02))
+        matched = [
+            _matched("Item A", 1000.0, "X1", "food"),
+            _matched("Item B",  346.0, "X2", "beverage"),
+        ]
+        result = engine.compute(matched, declared_total=1591.0)
+        # Per-line cashback stays based on each line's own price
+        # (informational view, sums to less than total_cashback because
+        # the grand-total gap goes into total_cashback only).
+        per_line_sum = sum(ln.cashback for ln in result.lines)
+        self.assertAlmostEqual(per_line_sum, 1346.0 * 0.02, places=4)
+        self.assertGreater(result.total_cashback, per_line_sum)
+
+    def test_categorized_share(self):
+        engine = CashbackEngine(FlatStrategy(0.02))
+        matched = [
+            _matched("Iced Tea", 10.0, "BEV", accepted=True),
+            _matched("OP CODE",   5.0, "X",   accepted=False),
+        ]
+        result = engine.compute(matched, declared_total=15.0)
+        self.assertAlmostEqual(result.categorized_share, 10 / 15)
 
 
 if __name__ == "__main__":

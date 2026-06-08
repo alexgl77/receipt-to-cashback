@@ -1,22 +1,26 @@
 """Compute cashback from extracted receipt items.
 
-**Business model (this is what the math reflects):**
+**Business model recap (what the math reflects):**
 
 We are a market-research company. We pay users a flat cashback on
 every valid purchase in exchange for their itemised consumption data,
 which we then anonymise and sell in aggregate. The cashback is the
-*price we pay for the data*, not a partner-funded rebate. Therefore:
+*price we pay for the data*, not a partner-funded rebate.
 
-* every line with a printed price earns cashback, regardless of
-  whether we can map it to a catalog SKU;
-* the catalog exists to **classify** the spend (food / beverage /
-  bakery / …) so the data we sell is enriched and segmentable, not
-  to gate eligibility.
+**Math rule (kept simple, after a day-12 design fix):**
 
-Two strategies are exposed so day 7 can A/B-test cashback rates
-(e.g. 2 % vs 3 %) — both are *flat across the receipt*; the only
-question is what flat rate maximises user acquisition without burning
-margin.
+Cashback is paid on the **grand total** the receipt prints — that's
+what the user actually spent, and that's what they expect cashback
+on. Items are extracted for the *data product* (we sell category
+breakdowns to brands), not to compute the payout.
+
+This sidesteps the trap of treating the gap between subtotal and
+grand total (service charge + tax + rounding, normal on every
+restaurant receipt) as a bug.
+
+**Sanity guard — kept, but narrow:** if the LLM clearly hallucinated
+items (line sum more than 2× the grand total) or could not read the
+grand total at all, we refuse to pay and flag the receipt for review.
 """
 
 from __future__ import annotations
@@ -26,6 +30,11 @@ from typing import Protocol
 
 from src.matcher import MatchedLineItem
 
+# If line_sum / declared_total exceeds this, something is very wrong
+# (LLM duplicated many items, or grand-total was misread as a tiny
+# number). Refuse cashback for review.
+HALLUCINATION_RATIO = 2.0
+
 
 class CashbackStrategy(Protocol):
     name: str
@@ -34,11 +43,7 @@ class CashbackStrategy(Protocol):
 
 
 class FlatStrategy:
-    """Single flat rate applied to every priced line on the receipt.
-
-    This is the default. It reflects the market-research model: we pay
-    per receipt scanned, not per partner SKU.
-    """
+    """Single flat rate applied to the grand-total spend."""
 
     def __init__(self, flat_rate: float = 0.02) -> None:
         self.flat_rate = flat_rate
@@ -49,11 +54,12 @@ class FlatStrategy:
 
 
 class TieredStrategy:
-    """Flat rate that varies by inferred category (food vs beverage vs …).
+    """Per-category rate, used for the day-7 A/B simulation.
 
-    Used in the day-7 A/B test to check whether category-aware
-    incentives drive different basket composition. Falls back to a
-    base rate when the matcher could not classify the line.
+    The rate is read off each matched line's catalog category.
+    When the total-level cashback is what we pay out, this becomes
+    a weighted average across categories at the line level (handled
+    in `CashbackEngine.compute` below).
     """
 
     def __init__(
@@ -92,14 +98,12 @@ class LineCashback:
 @dataclass
 class CashbackResult:
     lines: list[LineCashback]
-    total_spend: float            # what we actually pay cashback on (0 if requires_review)
+    total_spend: float            # what the user paid (= grand total when known)
     total_cashback: float         # 0 if requires_review
     strategy: str
-    line_sum: float               # raw sum of line_totals (may differ from total_spend if total_was_corrected)
-    declared_total: float | None  # the grand total the LLM extracted from the receipt
-    total_was_corrected: bool     # True if we trusted declared_total over line_sum due to >drift_tolerance
-    drift_pct: float | None       # signed (line_sum - declared) / declared
-    requires_review: bool = False  # True if drift exceeds extreme threshold; cashback is suppressed
+    line_sum: float               # subtotal: raw sum of line_totals
+    declared_total: float | None  # grand total the model extracted from the receipt
+    requires_review: bool = False  # True when we can't trust the receipt at all
 
     @property
     def effective_rate(self) -> float:
@@ -107,12 +111,8 @@ class CashbackResult:
 
     @property
     def categorized_share(self) -> float:
-        """Fraction of spend that was confidently mapped to a catalog category.
-
-        Based on `line_sum` (the unscaled raw line totals), not the
-        possibly-corrected `total_spend`. Otherwise a correction would
-        silently change the categorisation quality reported to buyers.
-        """
+        """Fraction of *subtotal* spend that was confidently mapped to
+        a catalog category. Used by data buyers to value the receipt."""
         if not self.line_sum:
             return 0.0
         cat_spend = sum(ln.line_total for ln in self.lines if ln.categorized)
@@ -120,84 +120,78 @@ class CashbackResult:
 
 
 class CashbackEngine:
-    """Compute cashback per line and aggregate it.
+    """Compute cashback off the **grand total** (what the user spent).
 
     Rules:
-        * every priced line earns cashback (market-research model);
-        * `MatchedLineItem.accepted` controls classification, not
-          eligibility — uncategorised lines still pay out at the
-          strategy's base rate, they are just labelled "uncategorized";
-        * lines without a `line_total` (LLM could not read a price)
-          contribute nothing — we do not invent prices.
-
-    **Total-drift guard (two-tiered):**
-
-    * If `|line_sum − declared| / declared` is between
-      `drift_tolerance` (default 10 %) and `extreme_drift_threshold`
-      (default 50 %), we trust the declared total and scale cashback
-      to match. Day-10.5 case: line_sum 2.72 M IDR vs declared 1.59 M
-      → trust the receipt's printed total.
-
-    * If the drift exceeds `extreme_drift_threshold`, we refuse to
-      pay any cashback and set `requires_review = True`. Day-10.6
-      case: line_sum 2.62 M IDR vs declared 591 K IDR (LLM dropped
-      the leading million when reading "1,591,600") — neither number
-      is trustworthy, paying either way under-pays or over-pays the
-      user. Refusing is the ethically correct call under the
-      market-research model.
+        * Cashback amount = grand-total × effective rate. The effective
+          rate is the line-weighted average of the strategy's per-line
+          rates (so TieredStrategy still works correctly — food earns
+          food's rate even when paid against the grand total).
+        * If `declared_total` is missing, we fall back to the sum of
+          line items (best guess) and flag review.
+        * If line_sum > declared_total × HALLUCINATION_RATIO (2×), the
+          LLM probably duplicated items or the grand total was misread
+          as a tiny number. We refuse to pay and flag review.
+        * Lines without a `line_total` contribute nothing — we do not
+          invent prices.
     """
 
-    def __init__(
-        self,
-        strategy: CashbackStrategy | None = None,
-        drift_tolerance: float = 0.10,
-        extreme_drift_threshold: float = 0.50,
-    ) -> None:
+    def __init__(self, strategy: CashbackStrategy | None = None) -> None:
         self.strategy = strategy or FlatStrategy()
-        self.drift_tolerance = drift_tolerance
-        self.extreme_drift_threshold = extreme_drift_threshold
 
     def compute(
         self,
         matched: list[MatchedLineItem],
         declared_total: float | None = None,
     ) -> CashbackResult:
-        # First pass: per-line numbers at the raw line totals.
         line_records: list[tuple[MatchedLineItem, float, float]] = []
         line_sum = 0.0
+        weighted_cb_at_line_rates = 0.0
+
         for m in matched:
             price = m.line_total or 0.0
             rate = self.strategy.rate_for(m) if price > 0 else 0.0
             line_records.append((m, price, rate))
             line_sum += price
+            weighted_cb_at_line_rates += price * rate
 
-        # Two-tier drift guard. See class docstring for rationale.
-        drift_pct: float | None = None
-        total_was_corrected = False
+        # --- Decide what "total_spend" is -----------------------------------
         requires_review = False
-        scale = 1.0
-        if declared_total and declared_total > 0 and line_sum > 0:
-            drift_pct = (line_sum - declared_total) / declared_total
-            abs_drift = abs(drift_pct)
-            if abs_drift > self.extreme_drift_threshold:
-                # We can't trust either number — refuse payment, ask
-                # for review. Better an angry user re-uploading a
-                # clearer photo than an under-paid user we don't hear
-                # from again.
+        if declared_total and declared_total > 0:
+            total_spend = declared_total
+            # Sanity: catastrophic line-sum vs declared mismatch implies
+            # the LLM hallucinated items or misread the grand total.
+            if line_sum > 0 and line_sum / declared_total > HALLUCINATION_RATIO:
                 requires_review = True
-                scale = 0.0
-            elif abs_drift > self.drift_tolerance:
-                scale = declared_total / line_sum
-                total_was_corrected = True
+        elif line_sum > 0:
+            # No grand total available — best guess is the subtotal.
+            total_spend = line_sum
+        else:
+            # Nothing to pay on.
+            total_spend = 0.0
+            requires_review = True
 
-        # Second pass: write LineCashback rows with the (possibly scaled) cashback.
+        # --- Compute aggregate cashback -------------------------------------
+        if requires_review:
+            total_cashback = 0.0
+            effective_rate_for_lines = 0.0
+        else:
+            # Per-line effective rate as a line-weighted average, applied
+            # to the grand total. If declared_total > line_sum (the
+            # normal case: service + tax + rounding push it up), the
+            # gap is paid at the same average rate the items would have
+            # earned. This lets a TieredStrategy keep its meaning.
+            effective_rate_for_lines = (
+                weighted_cb_at_line_rates / line_sum if line_sum else 0.0
+            )
+            total_cashback = total_spend * effective_rate_for_lines
+
+        # --- Build per-line view (informational; uses line totals as-is) ---
         lines: list[LineCashback] = []
-        total_cashback = 0.0
         for m, price, rate in line_records:
-            cashback = price * rate * scale
+            cashback = 0.0 if requires_review else price * rate
             category = m.match.category if m.accepted else "uncategorized"
             sku = m.match.sku if m.accepted else "—"
-
             lines.append(LineCashback(
                 item_name=m.item.name,
                 matched_sku=sku,
@@ -207,14 +201,6 @@ class CashbackEngine:
                 cashback=cashback,
                 categorized=m.accepted,
             ))
-            total_cashback += cashback
-
-        if requires_review:
-            total_spend = 0.0
-        elif total_was_corrected:
-            total_spend = declared_total or line_sum
-        else:
-            total_spend = line_sum
 
         return CashbackResult(
             lines=lines,
@@ -223,7 +209,5 @@ class CashbackEngine:
             strategy=self.strategy.name,
             line_sum=line_sum,
             declared_total=declared_total,
-            total_was_corrected=total_was_corrected,
-            drift_pct=drift_pct,
             requires_review=requires_review,
         )

@@ -201,27 +201,18 @@ def page_upload() -> None:
             + (f"  ·  Date: {extraction.date}" if extraction.date else "")
         )
         if result.requires_review:
-            st.error(
-                f"**Receipt held for review — no cashback paid.** The "
-                f"sum of line totals ({result.line_sum:,.0f} "
-                f"{extraction.currency or ''}) disagrees with the "
-                f"declared grand total ({result.declared_total:,.0f} "
-                f"{extraction.currency or ''}) by "
-                f"{result.drift_pct:+.0%} — too wide to trust either "
-                f"value. We refuse to pay rather than risk under- or "
-                f"over-paying. Please re-upload a clearer photo, or "
-                f"contact support if the receipt is correct."
+            declared_str = (
+                f"{result.declared_total:,.0f} {extraction.currency or ''}"
+                if result.declared_total
+                else "not detected"
             )
-        elif result.total_was_corrected:
-            st.warning(
-                f"**Total-drift guard fired.** The sum of line totals "
-                f"({result.line_sum:,.0f} {extraction.currency or ''}) "
-                f"disagrees with the receipt's declared grand total "
-                f"({result.declared_total:,.0f} {extraction.currency or ''}) "
-                f"by {result.drift_pct:+.0%}. To avoid over-paying we "
-                f"trust the declared total. The line table below shows "
-                f"the unscaled per-line numbers; the cashback metric "
-                f"above is scaled to match the grand total."
+            st.error(
+                "**Receipt held for review — no cashback paid.** The "
+                f"sum of items ({result.line_sum:,.0f} "
+                f"{extraction.currency or ''}) is more than 2× the "
+                f"grand total we read ({declared_str}). That usually "
+                "means the model double-counted items or misread the "
+                "total. Please re-upload a clearer photo."
             )
 
         st.markdown("**Line-by-line breakdown**")
