@@ -45,13 +45,16 @@ def main() -> int:
             fail("Streamlit traceback on homepage", page)
         print("[OK] Homepage clean")
 
-        # Open the Sample index dropdown — Streamlit selectbox is a div with role 'combobox'
-        # The label 'Sample index' precedes the actual selector.
-        sample_select = page.get_by_label("Sample index")
+        # Open the Sample index dropdown. Streamlit renders selectboxes as
+        # role="combobox". The Upload page has 1 combobox (Sample index)
+        # — pick that one.
+        comboboxes = page.get_by_role("combobox")
+        # The first combobox in the page is the Sample index selector.
+        sample_select = comboboxes.first
+        expect(sample_select).to_be_visible(timeout=15_000)
         sample_select.click()
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(1500)
 
-        # Pick the first sample option ("CORD sample #1")
         option = page.get_by_text("CORD sample #1", exact=True).first
         expect(option).to_be_visible(timeout=10_000)
         option.click()
