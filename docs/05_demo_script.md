@@ -26,7 +26,7 @@ on-screen action + the line to say. Total: 3 min.
 
 ---
 
-## Block 2 · 0:15 → 1:20 (65 s)
+## Block 2 · 0:15 → 1:30 (75 s)
 
 **Action:** Sidebar → **Sample index** dropdown → pick **CORD
 sample #1**. Progress bar appears.
@@ -38,7 +38,13 @@ sample #1**. Progress bar appears.
 > structured JSON — items, prices, currency, grand total — all
 > validated against a strict Pydantic schema. Then FAISS matches
 > each item against our 110-SKU catalog using multilingual
-> embeddings. The cashback is computed on the grand total."
+> embeddings. The cashback is computed on the grand total.
+>
+> The full stack in one breath: Gemini for vision and prompt
+> engineering, FAISS plus sentence-transformers for the vector
+> search, scikit-learn and scipy for the clustering and A/B test on
+> the analytics page, pandas for data wrangling, Pydantic for the
+> schema, and Streamlit for the UI."
 
 **Wait (~25–30 s)** until the big cashback number appears.
 
@@ -60,7 +66,7 @@ JSON**.
 
 ---
 
-## Block 3 · 1:20 → 1:50 (30 s)
+## Block 3 · 1:30 → 2:00 (30 s)
 
 **Action:** Sidebar → **B2B Analytics**.
 
@@ -77,7 +83,7 @@ JSON**.
 
 ---
 
-## Block 4 · 1:50 → 2:05 (15 s)
+## Block 4 · 2:00 → 2:15 (15 s)
 
 **Action:** Sidebar → **Ethics**.
 
@@ -90,30 +96,26 @@ JSON**.
 
 ---
 
-## Block 5 · 2:05 → 2:45 (40 s)
+## Block 5 · 2:15 → 2:45 (30 s)
 
 **Action:** Switch to the GitHub tab → open `src/vision_extractor.py`.
 
 **Say:**
-> "The Vision extractor — one Gemini multimodal call replaces what
-> used to be EasyOCR plus a text-only LLM. The prompt tells the
-> model to deduplicate items, treat the price next to a quantity
-> as the line total, and read the grand total carefully."
+> "Vision extractor — one Gemini multimodal call. The prompt
+> tells the model to deduplicate items and read the grand total
+> carefully."
 
 **Action:** Open `src/cashback_engine.py`.
 
 **Say:**
-> "The CashbackEngine pays on the grand total — what the user
-> actually spent — and uses the Strategy pattern, so swapping
-> flat 2 percent for flat 3 percent or for tiered rates is a
-> one-line change. Nine unit tests cover all the math."
+> "CashbackEngine pays on the grand total, Strategy pattern so
+> swapping rates is a one-line change. Nine unit tests."
 
 **Action:** Open `src/vector_store.py`.
 
 **Say:**
-> "FAISS index over the 110-SKU catalog, queried in under a
-> millisecond per item, using a multilingual sentence-transformer
-> so Indonesian and Korean item names classify correctly."
+> "FAISS index over the 110-SKU catalog, multilingual
+> sentence-transformer so Indonesian and Korean names classify."
 
 ---
 
