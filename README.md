@@ -27,8 +27,8 @@ license: mit
 
 ## Live demo
 
-- **Deployed app:** _added on day 8 after first successful HF Spaces deploy_
-- **Demo video (3 min):** _Loom link added on day 9_
+- **Deployed app:** https://alexgl77-receipt-to-cashback.hf.space
+- **Demo video (2:53):** https://www.loom.com/share/b10268c4694f4a8f8cf5e7292aef7a21
 - **Source code:** https://github.com/alexgl77/receipt-to-cashback
 
 ---

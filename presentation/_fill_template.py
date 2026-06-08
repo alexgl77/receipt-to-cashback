@@ -96,12 +96,12 @@ SLIDE_5_NEXT_STEPS = [
 ]
 
 SLIDE_6_VIDEO_LINK = "Live demo: https://huggingface.co/spaces/alexgl77/receipt-to-cashback"
-SLIDE_6_VIDEO_LINK_2 = "Loom video (3 min): [WILL BE ADDED AFTER RECORDING — see docs/05_demo_script.md]"
+SLIDE_6_VIDEO_LINK_2 = "Loom video (2:53): https://www.loom.com/share/b10268c4694f4a8f8cf5e7292aef7a21"
 
 SLIDE_7_LINKS = [
     "GitHub (public repo): https://github.com/alexgl77/receipt-to-cashback",
     "Live app: https://huggingface.co/spaces/alexgl77/receipt-to-cashback",
-    "3-min video (Loom): [WILL BE ADDED AFTER RECORDING]",
+    "Demo video (Loom, 2:53): https://www.loom.com/share/b10268c4694f4a8f8cf5e7292aef7a21",
     "Medium article: not planned",
 ]
 
