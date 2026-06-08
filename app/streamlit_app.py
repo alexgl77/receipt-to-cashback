@@ -57,13 +57,14 @@ def get_index() -> CatalogIndex:
     return CatalogIndex.from_csv(ROOT / "data" / "catalog.csv")
 
 
-@st.cache_resource(show_spinner="Loading sample CORD receipts…")
+@st.cache_resource(show_spinner=False)
 def get_sample_receipts() -> list[Image.Image]:
-    """Pull a handful of CORD-v2 receipts so the demo works without an upload."""
-    from datasets import load_dataset
-
-    ds = load_dataset("naver-clova-ix/cord-v2", split="train")
-    return [ds[i]["image"] for i in (0, 7, 50)]
+    """Load 3 pre-bundled CORD-v2 receipts from disk so the demo works
+    without an upload — and without pulling the whole `datasets`
+    package into the production image."""
+    samples_dir = ROOT / "data" / "samples"
+    paths = sorted(samples_dir.glob("cord_sample_*.png"))
+    return [Image.open(p).convert("RGB") for p in paths]
 
 
 # ----- pipeline runner ------------------------------------------------------
