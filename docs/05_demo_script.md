@@ -1,132 +1,92 @@
-# Demo video script — 3 min Loom
+# Demo video script — 2:00 target
 
-Ready to read out loud while screen-recording. Each block has the
-on-screen action + the line to say. Total: 3 min.
+Tight version. The Gemini Vision call returns fast enough that we
+don't need filler — every line below is needed. Hard cap 3 min per
+brief; we aim for 2:00 to leave editing slack.
 
 ## Before pressing record
 
 1. Open https://alexgl77-receipt-to-cashback.hf.space and leave it
-   loaded for 60 s — warms up the model on the Space.
+   loaded for 60 s — warms the model on the Space.
 2. Browser zoom 110%, notifications off.
-3. Have a second tab open at https://github.com/alexgl77/receipt-to-cashback
-4. Mic on (webcam optional — a PIP circle in a corner is fine).
-5. Speak in English (matches the UI).
+3. Second tab open: https://github.com/alexgl77/receipt-to-cashback
+4. This script visible on a second monitor / phone / VSCode panel —
+   NOT in a Chrome tab Loom will record.
+5. Loom: Window mode, Mic on, Camera optional. Pick the Chrome window.
 
 ---
 
-## Block 1 · 0:00 → 0:15 (15 s)
+## Block 1 · 0:00 → 0:08 (8 s)
 
-**Screen:** Upload Receipt page, empty, nothing uploaded yet.
+**Screen:** Upload Receipt page, empty.
 
 **Say:**
-> "Hi, this is the demo for *Receipt-to-Cashback*, my Capstone
-> project for the Developers Institute GenAI bootcamp 2026. The
-> slides covered the why and the architecture — this is the part
-> that shows it actually works."
+> "Hi, this is the demo for Receipt-to-Cashback, my Capstone for
+> the GenAI bootcamp 2026."
 
 ---
 
-## Block 2 · 0:15 → 1:30 (75 s)
+## Block 2 · 0:08 → 0:55 (47 s)
 
-**Action:** Sidebar → **Sample index** dropdown → pick **CORD
-sample #1**. Progress bar appears.
+**Action:** Sidebar → **Sample index** → **CORD sample #1**.
 
-**Say (while it's processing):**
-> "I'm picking a real receipt from CORD-v2, a public dataset of a
-> thousand receipts from Indonesian restaurants. Behind the scenes,
-> Gemini 2.5 Flash Vision takes the image directly and returns
-> structured JSON — items, prices, currency, grand total — all
-> validated against a strict Pydantic schema. Then FAISS matches
-> each item against our 110-SKU catalog using multilingual
-> embeddings. The cashback is computed on the grand total.
->
-> The full stack in one breath: Gemini for vision and prompt
-> engineering, FAISS plus sentence-transformers for the vector
-> search, scikit-learn and scipy for the clustering and A/B test on
-> the analytics page, pandas for data wrangling, Pydantic for the
-> schema, and Streamlit for the UI."
+**Say (while it processes):**
+> "Picking a real Indonesian restaurant receipt from CORD-v2.
+> Gemini 2.5 Flash Vision reads the image directly and returns
+> structured JSON. FAISS matches each item to our 110-SKU catalog
+> with multilingual embeddings. Cashback is computed on the grand
+> total. Stack: Gemini, FAISS, sentence-transformers, scikit-learn,
+> Pydantic, Streamlit."
 
-**Wait (~25–30 s)** until the big cashback number appears.
-
-**Say (once the number is visible):**
-> "Total spend: 1.59 million Indonesian Rupiah, roughly 100 US
-> dollars. Cashback: 2 percent flat on the grand total — about
-> 32,000 IDR. Category coverage: 100 percent. On the right, line
-> by line: every item, its category, the matched SKU, the spend,
-> the cashback."
-
-**Action:** Scroll down. Expand **Show Gemini Vision extraction
-JSON**.
-
-**Say:**
-> "This is the raw JSON Gemini returned. Items, quantities, prices,
-> currency, total — every field schema-validated by Pydantic. If the
-> model returns malformed output, the extractor retries once with
-> the validation error injected into the prompt."
+**When the cashback number appears:**
+> "1.6 million Rupiah total, about 100 dollars. Cashback at 2
+> percent: 32,000 IDR. 100 percent of items classified. Line
+> breakdown on the right."
 
 ---
 
-## Block 3 · 1:30 → 2:00 (30 s)
+## Block 3 · 0:55 → 1:15 (20 s)
 
 **Action:** Sidebar → **B2B Analytics**.
 
 **Say:**
-> "This is the buyer side — what a brand or research firm would see
-> if they bought our data. Top: a synthetic population of 400 users.
-> Middle: an A/B test between 2 and 3 percent cashback. Welch's
-> t-test recovers a 29 percent lift in receipts per user per month
-> at 3 percent, p-value below 0.05. Bottom: K-Means clustering of
-> users by category-spend shares, projected with PCA — four clean
-> segments matching the four archetypes we generated."
-
-**Action:** Scroll to show the cluster scatter chart.
+> "Buyer-side view. A/B test: 3 percent cashback drives a 29
+> percent lift in receipts per user, p below 0.05. K-Means
+> clusters users into four spend segments."
 
 ---
 
-## Block 4 · 2:00 → 2:15 (15 s)
+## Block 4 · 1:15 → 1:23 (8 s)
 
 **Action:** Sidebar → **Ethics**.
 
 **Say:**
-> "Because the business model is paying users for the right to sell
-> their consumption data, ethics lives in the app, not buried in
-> the repo. Seven sections: consent, privacy risk in receipt data,
-> OCR bias against non-Latin scripts, the hallucination policy, and
-> what we explicitly do not claim."
+> "Ethics in the app: consent, privacy, OCR bias, hallucination
+> policy."
 
 ---
 
-## Block 5 · 2:15 → 2:45 (30 s)
+## Block 5 · 1:23 → 1:50 (27 s)
 
-**Action:** Switch to the GitHub tab → open `src/vision_extractor.py`.
+**Action:** Switch to the GitHub tab.
 
-**Say:**
-> "Vision extractor — one Gemini multimodal call. The prompt
-> tells the model to deduplicate items and read the grand total
-> carefully."
+**Open `src/vision_extractor.py`:**
+> "Vision extractor: one Gemini call, image to JSON."
 
-**Action:** Open `src/cashback_engine.py`.
+**Open `src/cashback_engine.py`:**
+> "CashbackEngine: strategy pattern, pays on grand total."
 
-**Say:**
-> "CashbackEngine pays on the grand total, Strategy pattern so
-> swapping rates is a one-line change. Nine unit tests."
-
-**Action:** Open `src/vector_store.py`.
-
-**Say:**
-> "FAISS index over the 110-SKU catalog, multilingual
-> sentence-transformer so Indonesian and Korean names classify."
+**Open `src/vector_store.py`:**
+> "FAISS, multilingual, sub-millisecond per query."
 
 ---
 
-## Block 6 · 2:45 → 3:00 (15 s)
+## Block 6 · 1:50 → 2:00 (10 s)
 
-**Action:** Back to the deployed app (Upload Receipt with the result
-still on screen).
+**Action:** Back to the deployed app.
 
 **Say:**
-> "Live at the URL on the slides, source on GitHub — both linked in
-> the README. That's the demo. Thanks."
+> "Live URL and source on the slides. Thanks."
 
 ---
 
@@ -134,16 +94,13 @@ still on screen).
 
 | Problem | What to do |
 |---|---|
-| HF cold start, first response 40+ s | Keep talking — the "behind the scenes" paragraph in Block 2 is long enough to cover it. |
-| Gemini API rate-limited | The app caches by image hash — re-upload the same image and the second call is instant. |
-| HF Space down | Run locally: `./.venv/Scripts/streamlit run app/streamlit_app.py` on `localhost:8501`. The video doesn't have to be on the deployed URL. |
-| OCR misread on the chosen sample | Samples #2 and #3 are fallbacks. |
+| HF cold start, first response 40+ s | Keep talking — the stack line in Block 2 is built for that |
+| Gemini rate-limited | Re-upload same image — cached by hash, instant |
+| HF Space down | `./.venv/Scripts/streamlit run app/streamlit_app.py` and demo on `localhost:8501` |
+| OCR misread on sample #1 | Samples #2 and #3 are tested fallbacks |
 
 ## Editing notes
 
-- Cut any silence > 1 s between sentences.
-- If you flub a line, don't restart — use Loom's editor to trim. A
-  re-take adds 20 minutes for marginal polish.
-- The first 5 seconds are the only ones most reviewers will fully
-  watch attentively. Lead with what they need: "this is the demo
-  for X, here's what works."
+- Cut silence > 1 s in Loom editor.
+- If you flub, don't restart — trim.
+- After recording: Loom Settings → Visibility → **Public**.
